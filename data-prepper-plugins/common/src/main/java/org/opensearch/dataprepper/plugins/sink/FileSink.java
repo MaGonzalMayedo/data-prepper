@@ -32,7 +32,7 @@ public class FileSink implements Sink<Record<Object>> {
     public static final String FILE_PATH = "path";
 
     private final String outputFilePath;
-    private BufferedWriter writer;
+    private BufferedWriter writer; //Buffered Writer to
     private final ReentrantLock lock;
     private boolean isStopRequested;
     private boolean initialized;

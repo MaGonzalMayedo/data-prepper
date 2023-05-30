@@ -24,14 +24,23 @@ public class StdOutSinkTests {
     List<Record<Object>> testRecords;
 
 
+    //Added personal tests to see the functionality of the stdout sink.
     @BeforeEach
     public void setup() {
+        //Generating our test dataset:
         testRecords = new ArrayList<>();
         Map<String, Object> firstTestData = new HashMap<>();
         Map<String, Object> secondTestData = new HashMap<>();
 
         firstTestData.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
         secondTestData.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+
+        //Added set of tests:
+        firstTestData.put("LogType", "TESTING-LOG");
+        firstTestData.put("date", "27/11/2001");
+
+        secondTestData.put("LogType", "TESTING-LOG");
+        secondTestData.put("date", "27/11/2001");
 
         final Record<Object> firstTestRecord = new Record<>(JacksonEvent
                 .builder()

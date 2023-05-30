@@ -1,0 +1,4 @@
+server_port: 5678
+ssl: false
+sink_shutdown_timeout: "PT15M"
+processor_shutdown_timeout: "PT45S"

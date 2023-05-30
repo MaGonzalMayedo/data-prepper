@@ -1,0 +1,11 @@
+pluginName: opensearch
+attributesMapperClass: org.opensearch.dataprepper.logstash.mapping.OpenSearchPluginAttributesMapper
+mappedAttributeNames:
+  hosts: hosts
+  index: index
+  region: aws_region
+additionalAttributes:
+  aws_sigv4: true
+  insecure: false
+defaultSettings:
+  index: "logstash-%{yyyy.MM.dd}"

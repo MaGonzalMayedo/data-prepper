@@ -54,7 +54,7 @@ public class JacksonEvent implements Event {
 
     private static final String SEPARATOR = "/";
 
-    private static final ObjectMapper mapper = new ObjectMapper()
+    private static final ObjectMapper mapper = new ObjectMapper() //TODO: This mapper is used to convert to and from Json.
             .registerModule(new JavaTimeModule())
             .registerModule(new Jdk8Module()); // required for using Optional with Jackson. Ref: https://github.com/FasterXML/jackson-modules-java8
 
@@ -108,7 +108,7 @@ public class JacksonEvent implements Event {
             try {
                 return mapper.readTree((String) data);
             } catch (final JsonProcessingException e) {
-                throw new IllegalArgumentException("Unable to convert data into an event");
+                throw new IllegalArgumentException("Unable to convert data into an event"); //If we fail conversion of data to event. Data is unique to an event sub-class.
             }
         }
         return mapper.valueToTree(data);
