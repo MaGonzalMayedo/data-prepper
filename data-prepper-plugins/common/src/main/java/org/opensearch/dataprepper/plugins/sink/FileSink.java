@@ -81,6 +81,7 @@ public class FileSink implements Sink<Record<Object>> {
     // Temporary function to support both trace and log ingestion pipelines.
     // TODO: This function should be removed with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
     private void checkTypeAndWriteObject(final Object object, final BufferedWriter writer) throws IOException {
+        //Writes to the output file.
         if (object instanceof Event) {
             writer.write(((Event) object).toJsonString());
             writer.newLine();

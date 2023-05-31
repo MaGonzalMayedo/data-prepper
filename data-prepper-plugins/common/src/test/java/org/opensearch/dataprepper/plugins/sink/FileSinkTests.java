@@ -34,8 +34,8 @@ import static org.mockito.Mockito.when;
 
 class FileSinkTests {
     private File TEST_OUTPUT_FILE;
-    private final String TEST_DATA_1 = "data_prepper";
-    private final String TEST_DATA_2 = "file_sink";
+    private final String TEST_DATA_1 = "testing_data_prepper";
+    private final String TEST_DATA_2 = "testing_file_sink";
     private final String TEST_KEY = "test_key";
     private final Record<Object> TEST_STRING_RECORD_1 = new Record<>(TEST_DATA_1);
     private final Record<Object> TEST_STRING_RECORD_2 = new Record<>(TEST_DATA_2);
