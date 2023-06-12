@@ -9,6 +9,11 @@ public class CwlSinkConfig {
     @NotEmpty
     private String path = "src/resources/file-test-sample-output.txt";
 
+    @JsonProperty("arn_file")
+    private String arnFile = "";
+
+
+
     @JsonProperty("aws-user")
     @NotEmpty
     private String awsUser = "testUser";
