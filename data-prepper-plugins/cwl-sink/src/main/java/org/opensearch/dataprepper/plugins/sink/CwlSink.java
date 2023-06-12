@@ -58,7 +58,6 @@ public class CwlSink implements Sink<Record<Event>> {
 
             for (final Record<Event> record : records) {
                 try {
-                    record.getData().put("log-groupName", this.clientConfig.getLogGroup()); //Testing that the config class works!
                     postEvent(record.getData(), writer);
                 } catch (final IOException ex) {
                     throw new RuntimeException(format("Encountered exception writing to file %s", outputFilePath), ex);

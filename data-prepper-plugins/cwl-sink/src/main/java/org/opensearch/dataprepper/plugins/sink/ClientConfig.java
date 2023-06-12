@@ -9,19 +9,17 @@ import jakarta.validation.constraints.NotEmpty;
 public class ClientConfig {
     @JsonProperty("log_group")
     @NotEmpty
-    private String logGroup;
+    private String logGroup = "";
 
     @JsonProperty("log_stream")
     @NotEmpty
-    private String logStream;
+    private String logStream = "";
 
     @JsonProperty("batch_size")
-    @NotEmpty
-    private int batchSize;
+    private int batchSize = 10;
 
     @JsonProperty("retry_count")
-    @NotEmpty
-    private int retryCount;
+    private int retryCount = 10;
 
     public String getLogGroup() {
         return logGroup;
