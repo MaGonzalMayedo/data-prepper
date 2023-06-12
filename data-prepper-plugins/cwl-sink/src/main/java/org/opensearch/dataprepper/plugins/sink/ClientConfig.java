@@ -3,6 +3,9 @@ package org.opensearch.dataprepper.plugins.sink;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotEmpty;
 
+/**
+ * Class will oversee the configuration of the CWL SDK:
+ */
 public class ClientConfig {
     @JsonProperty("log_group")
     @NotEmpty
@@ -20,19 +23,19 @@ public class ClientConfig {
     @NotEmpty
     private int retryCount;
 
-    private String getLogGroup() {
+    public String getLogGroup() {
         return logGroup;
     }
 
-    private String getLogStream() {
+    public String getLogStream() {
         return logStream;
     }
 
-    private int getBatchSize() {
+    public int getBatchSize() {
         return batchSize;
     }
 
-    private int getRetryCount() {
+    public int getRetryCount() {
         return retryCount;
     }
 }

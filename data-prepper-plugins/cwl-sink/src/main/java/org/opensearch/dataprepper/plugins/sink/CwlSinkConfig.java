@@ -9,23 +9,23 @@ public class CwlSinkConfig {
     @NotEmpty
     private String path = "src/resources/file-test-sample-output.txt";
 
-    @JsonProperty("arn_file")
-    private String arnFile = "";
-
-
-
-    @JsonProperty("aws-user")
+    @JsonProperty("client_config")
     @NotEmpty
-    private String awsUser = "testUser";
+    private ClientConfig clientConfig;
 
-    @JsonProperty("aws-cred")
-    private int awsCredential = 45;
+    @JsonProperty("auth_config")
+    @NotEmpty
+    private AuthConfig authConfig;
 
     public String getPath() {
         return path;
     }
 
-    public String getAwsUser() { return awsUser; }
+    public ClientConfig getClientConfig() {
+        return clientConfig;
+    }
 
-    public int getAwsCredential() { return awsCredential; }
+    public AuthConfig getAuthConfig() {
+        return authConfig;
+    }
 }
