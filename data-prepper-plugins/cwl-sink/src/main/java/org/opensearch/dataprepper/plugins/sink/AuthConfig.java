@@ -11,4 +11,12 @@ public class AuthConfig {
 
     @JsonProperty("role_arn")
     private String role_arn = "";
+
+    public String getRegion() {
+        return region;
+    }
+
+    public String getRole_arn() {
+        return role_arn;
+    }
 }
