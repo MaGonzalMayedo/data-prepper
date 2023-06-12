@@ -18,6 +18,12 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import static java.lang.String.format;
 
+/**
+ * This class implements the CWL-Sink hub component.
+ * It binds all the configurations and methods needed
+ * to interact with CloudWatchLogs.
+ */
+
 @DataPrepperPlugin(name = "cwl-sink", pluginType = Sink.class, pluginConfigurationType = CwlSinkConfig.class)
 public class CwlSink implements Sink<Record<Event>> {
 
@@ -27,8 +33,8 @@ public class CwlSink implements Sink<Record<Event>> {
     public static final String FILE_PATH = "path";
 
     private final String outputFilePath;
-    private final String awsUser;
-    private final int awsCred;
+    private AuthConfig authConfig;
+    private ClientConfig clientConfig;
 
     private BufferedWriter writer;
     private final ReentrantLock lock; //Prevents race conditions.
@@ -38,8 +44,8 @@ public class CwlSink implements Sink<Record<Event>> {
     @DataPrepperPluginConstructor
     public CwlSink(final CwlSinkConfig cwlSinkConfig) {
         this.outputFilePath = cwlSinkConfig.getPath();
-        this.awsUser = cwlSinkConfig.getAwsUser();
-        this.awsCred = cwlSinkConfig.getAwsCredential();
+        this.authConfig = cwlSinkConfig.getAuthConfig();
+        this.clientConfig = cwlSinkConfig.getClientConfig();
         lock = new ReentrantLock(true);
     }
 
@@ -52,6 +58,7 @@ public class CwlSink implements Sink<Record<Event>> {
 
             for (final Record<Event> record : records) {
                 try {
+                    record.getData().put("log-groupName", this.clientConfig.getLogGroup()); //Testing that the config class works!
                     postEvent(record.getData(), writer);
                 } catch (final IOException ex) {
                     throw new RuntimeException(format("Encountered exception writing to file %s", outputFilePath), ex);

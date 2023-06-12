@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotEmpty;
 
 public class CwlSinkConfig {
 
+    //TODO: Remove this after the CWL SDK has been implemented in the main class.
     @JsonProperty("path")
     @NotEmpty
     private String path = "src/resources/file-test-sample-output.txt";
