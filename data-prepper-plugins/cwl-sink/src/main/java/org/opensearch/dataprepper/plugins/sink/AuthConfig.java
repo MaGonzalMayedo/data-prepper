@@ -9,11 +9,11 @@ import jakarta.validation.constraints.NotEmpty;
 public class AuthConfig {
     @JsonProperty("region")
     @NotEmpty
-    private String region = "";
+    private String region = "default";
 
     @JsonProperty("role_arn")
     @NotEmpty
-    private String role_arn = "";
+    private String role_arn = "default";
 
     public String getRegion() {
         return region;

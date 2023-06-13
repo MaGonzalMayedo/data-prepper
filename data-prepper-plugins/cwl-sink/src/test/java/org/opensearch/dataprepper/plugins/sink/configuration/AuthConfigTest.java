@@ -1,0 +1,19 @@
+package org.opensearch.dataprepper.plugins.sink.configuration;
+
+import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.plugins.sink.AuthConfig;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+
+public class AuthConfigTest {
+    @Test
+    void check_default_region_test() {
+        assertThat(new AuthConfig().getRegion(), equalTo("default"));
+    }
+
+    @Test
+    void check_default_role_test() {
+        assertThat(new AuthConfig().getRole_arn(), equalTo("default"));
+    }
+}
