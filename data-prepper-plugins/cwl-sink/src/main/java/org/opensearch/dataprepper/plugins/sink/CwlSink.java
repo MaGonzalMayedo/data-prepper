@@ -33,8 +33,8 @@ public class CwlSink implements Sink<Record<Event>> {
     public static final String FILE_PATH = "path";
 
     private final String outputFilePath;
-    private AuthConfig authConfig;
-    private ClientConfig clientConfig;
+    private final AuthConfig authConfig;
+    private final ClientConfig clientConfig;
 
     private BufferedWriter writer;
     private final ReentrantLock lock; //Prevents race conditions.

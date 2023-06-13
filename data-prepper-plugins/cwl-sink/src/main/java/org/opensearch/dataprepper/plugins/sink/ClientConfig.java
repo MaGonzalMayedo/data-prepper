@@ -1,7 +1,11 @@
 package org.opensearch.dataprepper.plugins.sink;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.introspect.TypeResolutionContext;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Null;
 
 /**
  * Class will oversee the configuration of the CWL SDK:
@@ -9,11 +13,11 @@ import jakarta.validation.constraints.NotEmpty;
 public class ClientConfig {
     @JsonProperty("log_group")
     @NotEmpty
-    private String logGroup = "";
+    private String logGroup = null;
 
     @JsonProperty("log_stream")
     @NotEmpty
-    private String logStream = "";
+    private String logStream = null;
 
     @JsonProperty("batch_size")
     private int batchSize = 10;
