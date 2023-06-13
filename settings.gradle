@@ -122,4 +122,5 @@ include 'data-prepper-plugins:aws-plugin'
 include 'data-prepper-plugins:obfuscate-processor'
 include 'data-prepper-plugins:parquet-codecs'
 include 'data-prepper-plugins:sqs-source'
-
+include 'data-prepper-plugins:cwl-sink'
+findProject(':data-prepper-plugins:cwl-sink')?.name = 'cwl-sink'
