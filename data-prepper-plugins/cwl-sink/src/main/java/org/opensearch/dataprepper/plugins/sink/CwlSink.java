@@ -40,10 +40,8 @@ public class CwlSink implements Sink<Record<Event>> {
         try {
             if (isStopRequested)
                 return;
-
-            for (final Record<Event> record : records) {
-                cwlClient.pushLogs(records);
-            }
+            LOG.info("Attempting to log records");
+            cwlClient.pushLogs(records);
 
         } finally {
             lock.unlock();
