@@ -14,6 +14,8 @@ import java.util.concurrent.locks.ReentrantLock;
  * This class implements the CWL-Sink hub component.
  * It binds all the configurations and methods needed
  * to interact with CloudWatchLogs.
+ * TODO: Add factory methods for buffer instantiation.
+ * TODO: Add buffer variable to pass into the CwlClient.java
  */
 
 @DataPrepperPlugin(name = "cwl-sink", pluginType = Sink.class, pluginConfigurationType = CwlSinkConfig.class)
@@ -42,7 +44,6 @@ public class CwlSink implements Sink<Record<Event>> {
                 return;
             LOG.info("Attempting to log records");
             cwlClient.pushLogs(records);
-
         } finally {
             lock.unlock();
         }
