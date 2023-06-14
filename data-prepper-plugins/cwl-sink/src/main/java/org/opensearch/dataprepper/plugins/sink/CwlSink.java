@@ -7,16 +7,8 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.concurrent.locks.ReentrantLock;
-
-import static java.lang.String.format;
 
 /**
  * This class implements the CWL-Sink hub component.
@@ -28,7 +20,6 @@ import static java.lang.String.format;
 public class CwlSink implements Sink<Record<Event>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(CwlSink.class);
-    private final String outputFilePath;
     private final AuthConfig authConfig;
     private final ClientConfig clientConfig;
     private CwlClient cwlClient;
@@ -38,7 +29,6 @@ public class CwlSink implements Sink<Record<Event>> {
 
     @DataPrepperPluginConstructor
     public CwlSink(final CwlSinkConfig cwlSinkConfig) {
-        this.outputFilePath = cwlSinkConfig.getPath();
         this.authConfig = cwlSinkConfig.getAuthConfig();
         this.clientConfig = cwlSinkConfig.getClientConfig();
         lock = new ReentrantLock(true);

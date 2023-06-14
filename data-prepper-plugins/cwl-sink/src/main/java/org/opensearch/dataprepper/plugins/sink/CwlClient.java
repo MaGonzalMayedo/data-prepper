@@ -3,7 +3,7 @@ package org.opensearch.dataprepper.plugins.sink;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
-import software.amazon.awssdk.services.cloudwatch.endpoints.internal.Value;
+//import software.amazon.awssdk.services.cloudwatch.endpoints.internal.Value;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClientBuilder;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CloudWatchLogsException;

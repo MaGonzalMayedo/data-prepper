@@ -13,10 +13,11 @@ repositories {
 dependencies {
     api project(':data-prepper-api')
     testImplementation platform('org.junit:junit-bom:5.9.1')
+    implementation platform('software.amazon.awssdk:bom:2.20.56')
+    implementation project(path: ':data-prepper-plugins:common')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
-    implementation platform('software.amazon.awssdk:bom:2.20.56')
     implementation 'software.amazon.awssdk:cloudwatch'
     implementation 'software.amazon.awssdk:cloudwatchlogs'
 }
