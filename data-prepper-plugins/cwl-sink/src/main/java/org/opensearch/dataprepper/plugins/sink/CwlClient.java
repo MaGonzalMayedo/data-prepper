@@ -54,19 +54,24 @@ public class CwlClient {
                     .build();
             logList.add(tempLogEvent);
         }
+
         try {
             //TODO: Can place this in a different method for clarity.
+            //TODO: Add error handling when implementing error handling.
             PutLogEventsRequest putLogEventsRequest = PutLogEventsRequest.builder()
                     .logEvents(logList)
                     .logGroupName(logGroup)
                     .logStreamName(logStream)
                     .build();
 
-            cloudWatchLogsClient.putLogEvents(putLogEventsRequest);
+            cloudWatchLogsClient.putLogEvents(putLogEventsRequest); //TODO: Can maybe use a RESPONSE object here.
         } catch (CloudWatchLogsException e) {
-            System.err.println(e.awsErrorDetails().errorMessage());
-            throw new RuntimeException();
+            throw new RuntimeException(e.awsErrorDetails().errorMessage(), e);
         }
 
+    }
+
+    public void shutdown() {
+        cloudWatchLogsClient.close();
     }
 }

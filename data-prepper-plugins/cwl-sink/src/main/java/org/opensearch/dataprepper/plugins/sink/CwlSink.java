@@ -28,15 +28,10 @@ import static java.lang.String.format;
 public class CwlSink implements Sink<Record<Event>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(CwlSink.class);
-    private static final String SAMPLE_FILE_PATH = "src/resources/file-test-sample-output.txt";
-
-    public static final String FILE_PATH = "path";
-
     private final String outputFilePath;
     private final AuthConfig authConfig;
     private final ClientConfig clientConfig;
-
-    private BufferedWriter writer;
+    private CwlClient cwlClient;
     private final ReentrantLock lock; //Prevents race conditions.
     private boolean isStopRequested;
     private boolean isInitialized;
@@ -57,26 +52,12 @@ public class CwlSink implements Sink<Record<Event>> {
                 return;
 
             for (final Record<Event> record : records) {
-                try {
-                    postEvent(record.getData(), writer);
-                } catch (final IOException ex) {
-                    throw new RuntimeException(format("Encountered exception writing to file %s", outputFilePath), ex);
-                }
+                cwlClient.pushLogs(records);
             }
 
-            try {
-                writer.flush();
-            } catch (final IOException ex) {
-                LOG.warn("Failed to flush for file {}", outputFilePath, ex);
-            }
         } finally {
             lock.unlock();
         }
-    }
-
-    public void postEvent(Event event, BufferedWriter writer) throws IOException {
-        writer.write(event.toJsonString());
-        writer.newLine();
     }
 
     @Override
@@ -84,9 +65,7 @@ public class CwlSink implements Sink<Record<Event>> {
         isStopRequested = true;
         lock.lock();
         try {
-            writer.close();
-        } catch (final IOException ex) {
-            LOG.error("Failed to close file {}.", outputFilePath, ex);
+           cwlClient.shutdown();
         } finally {
             lock.unlock();
         }
@@ -94,11 +73,7 @@ public class CwlSink implements Sink<Record<Event>> {
 
     @Override
     public void initialize() {
-        try {
-            writer = Files.newBufferedWriter(Paths.get(outputFilePath), StandardCharsets.UTF_8);
-        } catch (final IOException ex) {
-            throw new RuntimeException(format("Encountered exception opening/creating file %s", outputFilePath), ex);
-        }
+        cwlClient = new CwlClient(clientConfig.getLogGroup(), clientConfig.getLogStream(), clientConfig.getBatchSize(), clientConfig.getRetryCount());
         isInitialized = true;
     }
 
