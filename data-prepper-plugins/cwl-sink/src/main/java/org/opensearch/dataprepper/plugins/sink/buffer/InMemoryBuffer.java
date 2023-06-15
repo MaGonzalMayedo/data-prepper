@@ -9,21 +9,18 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
+//TODO: Can inject a threshold for how much data can be held. (Constructor and variable add-on)
+//TODO: Can potentially inject a more suitable byte-array alongside the threshold (above) to recover bytes
+//TODO: of an event rather the storing the entire event objects.
+
 /**
  * InMemoryBuffer is a simple memory based queue container
  * for recording information in case an error occurs during log publishing.
- * TODO: Can inject a threshold for how much data can be held. (Constructor and variable add-on)
- * TODO: Can potentially inject a more suitable byte-array alongside the threshold (above) to recover bytes
- * TODO: of an event rather the storing the entire event objects.
  */
 public class InMemoryBuffer implements Buffer {
     private static ArrayList<Event> eventBuffer;
     private final StopWatch stopwatch;
 
-    /**
-     * Instantiating a new buffer means clearing the old one!
-     * Suitable for memory based storage.
-     */
     InMemoryBuffer() {
         eventBuffer.clear();
         stopwatch = new StopWatch();
