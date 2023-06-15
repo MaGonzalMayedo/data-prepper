@@ -45,4 +45,5 @@ public class CwlSinkTest {
         cwlSink.initialize();
         assertThat(cwlSink.isReady(), equalTo(true));
     }
+
 }
