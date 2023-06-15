@@ -19,7 +19,8 @@ import java.util.List;
  * CloudWatch logs. It receives a collection of events and interprets them into
  * a message to send to CWL.
  * TODO: Need to add Client Configuration class. (ARN roles and region bounds)
- * TODO: Add the CloudWatchLogs Agent.
+ * TODO: Add the buffer dependency injection.
+ * TODO: Add error handling logic in here when batchSize and retryCount are in.
  */
 public class CwlClient {
     private final String logGroup;
@@ -29,7 +30,7 @@ public class CwlClient {
     private final CloudWatchLogsClient cloudWatchLogsClient;
 
 
-    public CwlClient(String logGroup, String logStream, int batchSize, int retryCount) {
+    public CwlClient(final String logGroup, final String logStream, final int batchSize, final int retryCount) {
         this.logGroup = logGroup;
         this.logStream = logStream;
         this.batchSize = batchSize;
@@ -43,7 +44,7 @@ public class CwlClient {
      * Function handles the packaging of events into log events before sending a bulk request:
      * @param logs Collection of Record events which hold log data.
      */
-    public void pushLogs(Collection<Record<Event>> logs) {
+    public void pushLogs(final Collection<Record<Event>> logs) {
 
         ArrayList<InputLogEvent> logList = new ArrayList<>();
 
@@ -56,7 +57,6 @@ public class CwlClient {
         }
 
         try {
-            //TODO: Can place this in a different method for clarity.
             //TODO: Add error handling when implementing error handling.
             PutLogEventsRequest putLogEventsRequest = PutLogEventsRequest.builder()
                     .logEvents(logList)

@@ -37,13 +37,17 @@ public class CwlSink implements Sink<Record<Event>> {
     }
 
     @Override
-    public void output(Collection<Record<Event>> records) {
+    public void output(final Collection<Record<Event>> records) {
         lock.lock();
         try {
             if (isStopRequested)
                 return;
-            LOG.info("Attempting to log records");
+            LOG.info("Attempting to publish records to CloudWatchLogs");
             cwlClient.pushLogs(records);
+        } catch (Exception e) {
+            LOG.error("Error attempting to push logs! (Max retry_count reached)");
+            shutdown();
+            throw new RuntimeException();
         } finally {
             lock.unlock();
         }
