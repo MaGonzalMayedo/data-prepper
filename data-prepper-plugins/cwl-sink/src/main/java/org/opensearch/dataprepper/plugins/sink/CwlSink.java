@@ -5,6 +5,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
+import org.opensearch.dataprepper.plugins.sink.buffer.Buffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.Collection;
@@ -25,7 +26,8 @@ public class CwlSink implements Sink<Record<Event>> {
     private final AuthConfig authConfig;
     private final ClientConfig clientConfig;
     private CwlClient cwlClient;
-    private final ReentrantLock lock; //Prevents race conditions.
+    private Buffer buffer;
+    private final ReentrantLock lock;
     private boolean isStopRequested;
     private boolean isInitialized;
 

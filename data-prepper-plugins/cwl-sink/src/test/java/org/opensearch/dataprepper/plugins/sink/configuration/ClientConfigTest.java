@@ -17,6 +17,11 @@ public class ClientConfigTest {
     }
 
     @Test
+    void check_default_buffer_type_test() {
+        assertThat(new ClientConfig().getBufferType(), equalTo("in_memory"));
+    }
+
+    @Test
     void check_default_batch_size() {
         assertThat(new ClientConfig().getBatchSize(), equalTo(10));
     }
