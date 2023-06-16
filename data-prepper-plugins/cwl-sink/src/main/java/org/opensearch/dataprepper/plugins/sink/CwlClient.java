@@ -38,8 +38,8 @@ public class CwlClient {
     private final int maxLogsQueued = 0; //TODO: Make use of this parameter if needed.
     private final int retryCount;
     private final CloudWatchLogsClient cloudWatchLogsClient;
-
     private int failCount = 0; //Counter to be used on the fly during error handling.
+    private boolean failedPost;
 
     public CwlClient(final Buffer buffer, String logGroup, final String logStream, final int batchSize, final int retryCount) {
         this.buffer = buffer;
@@ -69,6 +69,7 @@ public class CwlClient {
 
     private void pushLogs() {
         ArrayList<InputLogEvent> logEventList = new ArrayList<>();
+        failedPost = true;
 
         //TODO: Buffer logic (Threshold logic can be added here)
         while (buffer.getEventCount() > 0) {
@@ -79,17 +80,28 @@ public class CwlClient {
             logEventList.add(tempLogEvent);
         }
 
-        try {
-            //TODO: Add error handling when implementing error handling.
-            PutLogEventsRequest putLogEventsRequest = PutLogEventsRequest.builder()
-                    .logEvents(logEventList)
-                    .logGroupName(logGroup)
-                    .logStreamName(logStream)
-                    .build();
+        while (failedPost && (failCount < retryCount)) {
+            try {
+                //TODO: Add error handling when implementing error handling.
+                PutLogEventsRequest putLogEventsRequest = PutLogEventsRequest.builder()
+                        .logEvents(logEventList)
+                        .logGroupName(logGroup)
+                        .logStreamName(logStream)
+                        .build();
 
-            cloudWatchLogsClient.putLogEvents(putLogEventsRequest);
-        } catch (CloudWatchLogsException e) {
-            throw new RuntimeException(e.awsErrorDetails().errorMessage(), e);
+                PutLogEventsResponse putLogEventsResponse = cloudWatchLogsClient.putLogEvents(putLogEventsRequest);
+
+                failedPost = false;
+            } catch (CloudWatchLogsException e) {
+//                throw new RuntimeException(e.awsErrorDetails().errorMessage(), e);
+                LOG.error("Failed to push logs with error: {}", e.getMessage());
+                LOG.warn("Trying to retransmit request...");
+                failCount++;
+            }
+        }
+
+        if (failedPost) {
+            throw new RuntimeException("Error, timed out trying to push logs!");
         }
     }
 
