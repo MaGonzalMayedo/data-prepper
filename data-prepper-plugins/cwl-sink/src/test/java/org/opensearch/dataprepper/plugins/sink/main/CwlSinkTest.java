@@ -2,13 +2,14 @@ package org.opensearch.dataprepper.plugins.sink.main;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.plugins.sink.AuthConfig;
-import org.opensearch.dataprepper.plugins.sink.ClientConfig;
-import org.opensearch.dataprepper.plugins.sink.CwlSink;
-import org.opensearch.dataprepper.plugins.sink.CwlSinkConfig;
+import org.opensearch.dataprepper.plugins.sink.*;
+import org.opensearch.dataprepper.plugins.sink.buffer.Buffer;
+import org.opensearch.dataprepper.plugins.sink.buffer.InMemoryBuffer;
+import org.opensearch.dataprepper.plugins.sink.buffer.InMemoryBufferFactory;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -22,7 +23,7 @@ public class CwlSinkTest {
     private final int DEFAULT_BATCH_SIZE = 10;
     private final int DEFAULT_RETRY_COUNT = 10;
 
-    CwlSink getTestableClass() {
+    public CwlSink getTestableClass() {
         return new CwlSink(cwlSinkConfig);
     }
 
@@ -35,9 +36,17 @@ public class CwlSinkTest {
         when(clientConfig.getLogStream()).thenReturn(TEST_LOG_STREAM);
         when(clientConfig.getBatchSize()).thenReturn(DEFAULT_BATCH_SIZE);
         when(clientConfig.getRetryCount()).thenReturn(DEFAULT_RETRY_COUNT);
+        when(clientConfig.getBufferType()).thenReturn("in_memory");
         when(cwlSinkConfig.getAuthConfig()).thenReturn(authConfig);
         when(cwlSinkConfig.getClientConfig()).thenReturn(clientConfig);
     }
+
+//    public Buffer getMockBuffer() {
+//        return new InMemoryBufferFactory().getBuffer();
+//    }
+//    public CwlClient getMockClient() {
+//        return new CwlClient(getMockBuffer(), "testGroup", "testStream", 10, 10);
+//    }
 
     @Test
     void check_initialized_test() {
@@ -46,4 +55,9 @@ public class CwlSinkTest {
         assertThat(cwlSink.isReady(), equalTo(true));
     }
 
+    @Test
+    void check_not_initialized_test() {
+        CwlSink cwlSink = getTestableClass();
+        assertFalse(cwlSink.isReady(), "s3 sink is not ready.");
+    }
 }

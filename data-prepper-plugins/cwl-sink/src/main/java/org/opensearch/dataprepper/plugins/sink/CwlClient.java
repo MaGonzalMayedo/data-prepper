@@ -82,7 +82,6 @@ public class CwlClient {
 
         while (failedPost && (failCount < retryCount)) {
             try {
-                //TODO: Add error handling when implementing error handling.
                 PutLogEventsRequest putLogEventsRequest = PutLogEventsRequest.builder()
                         .logEvents(logEventList)
                         .logGroupName(logGroup)
@@ -93,7 +92,6 @@ public class CwlClient {
 
                 failedPost = false;
             } catch (CloudWatchLogsException e) {
-//                throw new RuntimeException(e.awsErrorDetails().errorMessage(), e);
                 LOG.error("Failed to push logs with error: {}", e.getMessage());
                 LOG.warn("Trying to retransmit request...");
                 failCount++;
@@ -101,7 +99,8 @@ public class CwlClient {
         }
 
         if (failedPost) {
-            throw new RuntimeException("Error, timed out trying to push logs!");
+            LOG.error("Error, timed out trying to push logs!");
+            throw new RuntimeException("Error, timed out trying to push logs! (Max retry_count reached)");
         }
     }
 

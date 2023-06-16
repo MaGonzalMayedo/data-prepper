@@ -52,10 +52,6 @@ public class CwlSink implements Sink<Record<Event>> {
                 return;
             LOG.info("Sending logs to client!");
             cwlClient.output(records);
-        } catch (Exception e) {
-            LOG.error("Error attempting to push logs! (Max retry_count reached)");
-            shutdown();
-            throw new RuntimeException();
         } finally {
             lock.unlock();
         }
