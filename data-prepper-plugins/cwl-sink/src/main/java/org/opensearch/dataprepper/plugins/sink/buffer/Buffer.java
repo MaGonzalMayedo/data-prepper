@@ -15,6 +15,6 @@ public interface Buffer {
      */
     int getEventCount();
     long getDuration();
-    void writeEvent(Event event) throws IOException;
+    void writeEvent(Event event);
     Event getEvent();
 }

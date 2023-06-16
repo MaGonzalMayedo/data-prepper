@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
  * for recording information in case an error occurs during log publishing.
  */
 public class InMemoryBuffer implements Buffer {
-    private static ArrayList<Event> eventBuffer;
+    private static ArrayList<Event> eventBuffer; //TODO: Change this to Record<Event>
     private final StopWatch stopwatch;
 
     InMemoryBuffer() {
@@ -40,10 +40,9 @@ public class InMemoryBuffer implements Buffer {
     /**
      * Write byte array representing a single event into byteArray.
      * @param event Event to be stored in buffer.
-     * @throws IOException
      */
     @Override
-    public void writeEvent(Event event) throws IOException {
+    public void writeEvent(Event event) {
         eventBuffer.add(event);
     }
 

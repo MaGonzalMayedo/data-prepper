@@ -6,17 +6,19 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.plugins.sink.buffer.Buffer;
+import org.opensearch.dataprepper.plugins.sink.buffer.BufferFactory;
+import org.opensearch.dataprepper.plugins.sink.buffer.InMemoryBufferFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.concurrent.locks.ReentrantLock;
 
+//TODO: Add buffer variable to pass into the CwlClient.java
+
 /**
  * This class implements the CWL-Sink hub component.
  * It binds all the configurations and methods needed
  * to interact with CloudWatchLogs.
- * TODO: Add factory methods for buffer instantiation.
- * TODO: Add buffer variable to pass into the CwlClient.java
  */
 
 @DataPrepperPlugin(name = "cwl-sink", pluginType = Sink.class, pluginConfigurationType = CwlSinkConfig.class)
@@ -26,7 +28,7 @@ public class CwlSink implements Sink<Record<Event>> {
     private final AuthConfig authConfig;
     private final ClientConfig clientConfig;
     private CwlClient cwlClient;
-    private Buffer buffer;
+    private BufferFactory bufferFactory;
     private final ReentrantLock lock;
     private boolean isStopRequested;
     private boolean isInitialized;
@@ -36,6 +38,10 @@ public class CwlSink implements Sink<Record<Event>> {
         this.authConfig = cwlSinkConfig.getAuthConfig();
         this.clientConfig = cwlSinkConfig.getClientConfig();
         lock = new ReentrantLock(true);
+
+        if (clientConfig.getBufferType().equals("in_memory")) {
+            bufferFactory = new InMemoryBufferFactory();
+        }
     }
 
     @Override
@@ -45,7 +51,7 @@ public class CwlSink implements Sink<Record<Event>> {
             if (isStopRequested)
                 return;
             LOG.info("Attempting to publish records to CloudWatchLogs");
-            cwlClient.pushLogs(records);
+            cwlClient.output(records);
         } catch (Exception e) {
             LOG.error("Error attempting to push logs! (Max retry_count reached)");
             shutdown();
@@ -68,7 +74,7 @@ public class CwlSink implements Sink<Record<Event>> {
 
     @Override
     public void initialize() {
-        cwlClient = new CwlClient(clientConfig.getLogGroup(), clientConfig.getLogStream(), clientConfig.getBatchSize(), clientConfig.getRetryCount());
+        cwlClient = new CwlClient(bufferFactory.getBuffer() ,clientConfig.getLogGroup(), clientConfig.getLogStream(), clientConfig.getBatchSize(), clientConfig.getRetryCount());
         isInitialized = true;
     }
 
