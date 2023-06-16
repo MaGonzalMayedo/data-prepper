@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.sink.buffer;
 
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.io.IOException;
 
@@ -15,6 +16,6 @@ public interface Buffer {
      */
     int getEventCount();
     long getDuration();
-    void writeEvent(Event event);
-    Event getEvent();
+    void writeEvent(Record<Event> event);
+    Record<Event> getEvent();
 }

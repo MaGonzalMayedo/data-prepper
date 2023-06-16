@@ -28,11 +28,10 @@ import java.util.List;
  * CloudWatch logs. It receives a collection of events and interprets them into
  * a message to send to CWL.
  * TODO: Need to add Client Configuration class. (ARN roles and region bounds)
- * TODO: Add error handling logic in here when batchSize and retryCount are in.
  */
 public class CwlClient {
     private static final Logger LOG = LoggerFactory.getLogger(CwlClient.class);
-    private Buffer buffer;
+    private final Buffer buffer;
     private final String logGroup;
     private final String logStream;
     private final int batchSize;
@@ -55,41 +54,35 @@ public class CwlClient {
 
     /**
      * Function handles the packaging of events into log events before sending a bulk request to CWL.
+     * Implements simple batch limit buffer. (Sends once batch size is reached)
      * @param logs Collection of Record events which hold log data.
      */
     public void output(final Collection<Record<Event>> logs) {
-        ArrayList<Record<Event>> logList = new ArrayList<>(logs);
-        ArrayList<InputLogEvent> logEventList = new ArrayList<>();
-
-        //Check if our logs are over the limit.
-        if (logs.size() > batchSize) {
-            for (int i = logs.size() - 1; i >= batchSize; i--) {
-                buffer.writeEvent(logList.remove(i).getData());
-            }
-        } else if ((logs.size() < batchSize) && (buffer.getEventCount() != 0)) {
-            final int spaceLeft = batchSize - logs.size();
-            for (int i = Math.min(spaceLeft, buffer.getEventCount()); i < batchSize; i++) {
-                final Record<Event> tempEvent = new Record<>(buffer.getEvent());
-                logList.add(tempEvent);
+        for (Record<Event> singleLog: logs) {
+            buffer.writeEvent(singleLog);
+            if (buffer.getEventCount() >= batchSize) {
+                LOG.info("Attempting to push logs!");
+                pushLogs();
             }
         }
+    }
 
-        for (Record<Event> singleLog: logs) {
+    private void pushLogs() {
+        ArrayList<InputLogEvent> logEventList = new ArrayList<>();
+
+        //TODO: Buffer logic (Threshold logic can be added here)
+        while (buffer.getEventCount() > 0) {
             InputLogEvent tempLogEvent = InputLogEvent.builder()
-                    .message(singleLog.getData().toJsonString())
+                    .message(buffer.getEvent().getData().toJsonString())
                     .timestamp(System.currentTimeMillis())
                     .build();
             logEventList.add(tempLogEvent);
         }
 
-        pushLogs(logEventList);
-    }
-
-    private void pushLogs(ArrayList<InputLogEvent> logList) {
         try {
             //TODO: Add error handling when implementing error handling.
             PutLogEventsRequest putLogEventsRequest = PutLogEventsRequest.builder()
-                    .logEvents(logList)
+                    .logEvents(logEventList)
                     .logGroupName(logGroup)
                     .logStreamName(logStream)
                     .build();

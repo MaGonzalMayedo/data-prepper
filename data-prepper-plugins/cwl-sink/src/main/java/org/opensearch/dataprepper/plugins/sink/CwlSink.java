@@ -50,7 +50,7 @@ public class CwlSink implements Sink<Record<Event>> {
         try {
             if (isStopRequested)
                 return;
-            LOG.info("Attempting to publish records to CloudWatchLogs");
+            LOG.info("Sending logs to client!");
             cwlClient.output(records);
         } catch (Exception e) {
             LOG.error("Error attempting to push logs! (Max retry_count reached)");
