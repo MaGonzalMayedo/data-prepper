@@ -37,7 +37,7 @@ public class CwlClient {
     private final int batchSize;
     private final int maxLogsQueued = 0; //TODO: Make use of this parameter if needed.
     private final int retryCount;
-    private final CloudWatchLogsClient cloudWatchLogsClient;
+    private CloudWatchLogsClient cloudWatchLogsClient;
     private int failCount = 0; //Counter to be used on the fly during error handling.
     private boolean failedPost;
 
@@ -71,7 +71,6 @@ public class CwlClient {
         ArrayList<InputLogEvent> logEventList = new ArrayList<>();
         failedPost = true;
 
-        //TODO: Buffer logic (Threshold logic can be added here)
         while (buffer.getEventCount() > 0) {
             InputLogEvent tempLogEvent = InputLogEvent.builder()
                     .message(buffer.getEvent().getData().toJsonString())
@@ -106,5 +105,10 @@ public class CwlClient {
 
     public void shutdown() {
         cloudWatchLogsClient.close();
+    }
+
+    //For Testing:
+    public void setCloudWatchLogsClient(CloudWatchLogsClient cloudWatchLogsClient) {
+        this.cloudWatchLogsClient = cloudWatchLogsClient;
     }
 }

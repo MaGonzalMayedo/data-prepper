@@ -41,13 +41,6 @@ public class CwlSinkTest {
         when(cwlSinkConfig.getClientConfig()).thenReturn(clientConfig);
     }
 
-//    public Buffer getMockBuffer() {
-//        return new InMemoryBufferFactory().getBuffer();
-//    }
-//    public CwlClient getMockClient() {
-//        return new CwlClient(getMockBuffer(), "testGroup", "testStream", 10, 10);
-//    }
-
     @Test
     void check_initialized_test() {
         CwlSink cwlSink = getTestableClass();
