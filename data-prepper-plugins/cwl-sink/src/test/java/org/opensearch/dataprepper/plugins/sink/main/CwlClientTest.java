@@ -13,17 +13,17 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class CwlClientTest {
-    private CloudWatchLogsClient mockClient;
-    public Buffer getMockBuffer() {
-        InMemoryBuffer mockBuffer = mock(InMemoryBuffer.class);
-        when(mockBuffer.getEventCount()).thenReturn(10);
-        when(mockBuffer.getEvent()).thenReturn(new Record<Event>()
-
-        return mockBuffer;
-    }
-    public CwlClient getMockClient() {
-        return new CwlClient(getMockBuffer(), "testGroup", "testStream", 10, 10);
-    }
-
-    //Test when
+//    private CloudWatchLogsClient mockClient;
+//    public Buffer getMockBuffer() {
+//        InMemoryBuffer mockBuffer = mock(InMemoryBuffer.class);
+//        when(mockBuffer.getEventCount()).thenReturn(10);
+//        when(mockBuffer.getEvent()).thenReturn(new Record<Event>()
+//
+//        return mockBuffer;
+//    }
+//    public CwlClient getMockClient() {
+//        return new CwlClient(getMockBuffer(), "testGroup", "testStream", 10, 10);
+//    }
+//
+//    //Test when
 }
