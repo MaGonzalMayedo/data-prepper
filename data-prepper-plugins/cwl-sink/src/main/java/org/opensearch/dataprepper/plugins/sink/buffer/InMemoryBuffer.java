@@ -50,6 +50,10 @@ public class InMemoryBuffer implements Buffer {
         eventBuffer.add(event);
     }
 
+    /**
+     * getEvent returns an event (Queue style) and removes it at the same time.
+     * @return a Record-Event object that was taken from the front of queue.
+     */
     @Override
     public Record<Event> getEvent() {
         return eventBuffer.remove(0);

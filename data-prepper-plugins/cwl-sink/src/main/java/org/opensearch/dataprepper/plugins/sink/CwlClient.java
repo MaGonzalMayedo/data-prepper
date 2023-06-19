@@ -100,6 +100,8 @@ public class CwlClient {
         if (failedPost) {
             LOG.error("Error, timed out trying to push logs!");
             throw new RuntimeException("Error, timed out trying to push logs! (Max retry_count reached)");
+        } else {
+            failCount = 0;
         }
     }
 

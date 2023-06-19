@@ -17,5 +17,6 @@ public interface Buffer {
     int getEventCount();
     long getDuration();
     void writeEvent(Record<Event> event);
+
     Record<Event> getEvent();
 }

@@ -1,29 +1,99 @@
 package org.opensearch.dataprepper.plugins.sink.main;
 
+import org.checkerframework.checker.units.qual.C;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.sink.CwlClient;
+import org.opensearch.dataprepper.plugins.sink.*;
 import org.opensearch.dataprepper.plugins.sink.buffer.Buffer;
 import org.opensearch.dataprepper.plugins.sink.buffer.InMemoryBuffer;
 import org.opensearch.dataprepper.plugins.sink.buffer.InMemoryBufferFactory;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
+import software.amazon.awssdk.services.cloudwatchlogs.model.CloudWatchLogsException;
+import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsRequest;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
+
+//TODO: Add Codec session.
+//TODO: Finish adding feature for ARN reading.
 
 public class CwlClientTest {
-//    private CloudWatchLogsClient mockClient;
-//    public Buffer getMockBuffer() {
-//        InMemoryBuffer mockBuffer = mock(InMemoryBuffer.class);
-//        when(mockBuffer.getEventCount()).thenReturn(10);
-//        when(mockBuffer.getEvent()).thenReturn(new Record<Event>()
-//
-//        return mockBuffer;
-//    }
-//    public CwlClient getMockClient() {
-//        return new CwlClient(getMockBuffer(), "testGroup", "testStream", 10, 10);
-//    }
-//
-//    //Test when
+    private CloudWatchLogsClient mockClient;
+    private AuthConfig authConfig;
+    private ClientConfig clientConfig;
+    private CwlSinkConfig cwlSinkConfig;
+    private Buffer testBuffer;
+    private final String TEST_LOG_GROUP = "TESTGROUP";
+    private final String TEST_LOG_STREAM = "TESTSTREAM";
+    private final int DEFAULT_BATCH_SIZE = 10;
+    private final int DEFAULT_RETRY_COUNT = 10;
+
+    private final String DEFAULT_REGION = "us-east-1";
+    private final String DEFAULT_ARN = "test:urn";
+    @BeforeEach
+    void setUp() {
+        authConfig = mock(AuthConfig.class);
+        clientConfig = mock(ClientConfig.class);
+        cwlSinkConfig = mock(CwlSinkConfig.class);
+
+        when(clientConfig.getLogGroup()).thenReturn(TEST_LOG_GROUP);
+        when(clientConfig.getLogStream()).thenReturn(TEST_LOG_STREAM);
+        when(clientConfig.getBatchSize()).thenReturn(DEFAULT_BATCH_SIZE);
+        when(clientConfig.getRetryCount()).thenReturn(DEFAULT_RETRY_COUNT);
+        when(clientConfig.getBufferType()).thenReturn("in_memory");
+        when(cwlSinkConfig.getAuthConfig()).thenReturn(authConfig);
+        when(cwlSinkConfig.getClientConfig()).thenReturn(clientConfig);
+
+        when(authConfig.getRegion()).thenReturn(DEFAULT_REGION);
+        when(authConfig.getRole_arn()).thenReturn(DEFAULT_ARN);
+    }
+
+    CwlClient getClientWithMemoryBuffer() {
+        CwlClient cwlSinkClient = new CwlClient(testBuffer, clientConfig.getLogGroup(), clientConfig.getLogStream(),
+                clientConfig.getBatchSize(), clientConfig.getRetryCount());
+        cwlSinkClient.setCloudWatchLogsClient(mockClient);
+
+        return cwlSinkClient;
+    }
+
+    void setMockClientNoErrors() {
+        mockClient = mock(CloudWatchLogsClient.class);
+        doNothing().when(mockClient).putLogEvents(any(PutLogEventsRequest.class));
+    }
+
+    void setMockClientThrowCWLException() {
+        mockClient = mock(CloudWatchLogsClient.class);
+        doThrow(CloudWatchLogsException.class).when(mockClient.putLogEvents(any(PutLogEventsRequest.class)));
+    }
+
+    void setBufferWithData() {
+        testBuffer = mock(InMemoryBuffer.class);
+        when(testBuffer.getEvent()).thenReturn(new Record<>(JacksonEvent.fromMessage("testing logs")));
+        when(testBuffer.getEventCount()).thenReturn(10);
+    }
+
+    @Test
+    void client_creation_test() {
+        CwlClient cwlClient = getClientWithMemoryBuffer();
+    }
+
+    @Test
+    void check_empty_buffer_test() {
+        doNothing();
+    }
+
+    @Test
+    void retry_count_limit_reached_test() {
+        setBufferWithData();
+        CwlClient cwlClient = getClientWithMemoryBuffer();
+
+
+    }
+
+    @Test
+    void successful_transmission_test() {
+
+    }
 }
