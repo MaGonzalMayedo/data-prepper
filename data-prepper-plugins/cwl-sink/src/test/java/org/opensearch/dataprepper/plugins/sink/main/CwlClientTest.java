@@ -102,11 +102,7 @@ public class CwlClientTest {
         setMockClientThrowCWLException();
         CwlClient cwlClient = getClientWithMemoryBuffer();
 
-        try {
-            cwlClient.output(getSampleRecords());
-        } catch (RuntimeException e) {
-            assertNotNull(e);
-        }
+        assertThrows(RuntimeException.class, () -> cwlClient.output(getSampleRecords()));
     }
 
     @Test
