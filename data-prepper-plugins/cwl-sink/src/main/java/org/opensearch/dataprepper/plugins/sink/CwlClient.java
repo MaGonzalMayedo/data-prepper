@@ -22,12 +22,12 @@ import java.util.List;
 //TODO: Might have to encapsulate the buffer writeEvent method in a try and catch statement.
 //TODO: Look over EventHandle.
 //TODO: Need to add logic for max amounts of events that can be buffered.
+//TODO: Need to add Client Configuration class. (ARN roles and region bounds)
 
 /**
  * CwlClient is an interface class that simplifies method calls to post logs to
  * CloudWatch logs. It receives a collection of events and interprets them into
  * a message to send to CWL.
- * TODO: Need to add Client Configuration class. (ARN roles and region bounds)
  */
 public class CwlClient {
     private static final Logger LOG = LoggerFactory.getLogger(CwlClient.class);

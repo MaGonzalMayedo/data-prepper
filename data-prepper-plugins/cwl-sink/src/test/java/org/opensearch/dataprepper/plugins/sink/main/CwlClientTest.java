@@ -14,6 +14,12 @@ import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CloudWatchLogsException;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsRequest;
 
+import java.util.ArrayList;
+import java.util.Collection;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 //TODO: Add Codec session.
@@ -65,13 +71,19 @@ public class CwlClientTest {
 
     void setMockClientThrowCWLException() {
         mockClient = mock(CloudWatchLogsClient.class);
-        doThrow(CloudWatchLogsException.class).when(mockClient.putLogEvents(any(PutLogEventsRequest.class)));
+        doThrow(CloudWatchLogsException.class).when(mockClient).putLogEvents(any(PutLogEventsRequest.class));
     }
 
     void setBufferWithData() {
-        testBuffer = mock(InMemoryBuffer.class);
-        when(testBuffer.getEvent()).thenReturn(new Record<>(JacksonEvent.fromMessage("testing logs")));
-        when(testBuffer.getEventCount()).thenReturn(10);
+        testBuffer = new InMemoryBufferFactory().getBuffer();
+    }
+
+    Collection<Record<Event>> getSampleRecords() {
+        ArrayList<Record<Event>> returnCollection = new ArrayList<>();
+        for (int i = 0; i < DEFAULT_BATCH_SIZE; i++) {
+            returnCollection.add(new Record<>(JacksonEvent.fromMessage("testMessage")));
+        }
+        return returnCollection;
     }
 
     @Test
@@ -87,13 +99,20 @@ public class CwlClientTest {
     @Test
     void retry_count_limit_reached_test() {
         setBufferWithData();
+        setMockClientThrowCWLException();
         CwlClient cwlClient = getClientWithMemoryBuffer();
 
-
+        try {
+            cwlClient.output(getSampleRecords());
+        } catch (RuntimeException e) {
+            assertNotNull(e);
+        }
     }
 
     @Test
     void successful_transmission_test() {
-
+        setBufferWithData();
+        setMockClientNoErrors();
+        CwlClient cwlClient = getClientWithMemoryBuffer();
     }
 }
