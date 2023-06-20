@@ -1,6 +1,5 @@
 package org.opensearch.dataprepper.plugins.sink.main;
 
-import org.checkerframework.checker.units.qual.C;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.Event;
@@ -8,7 +7,6 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.sink.*;
 import org.opensearch.dataprepper.plugins.sink.buffer.Buffer;
-import org.opensearch.dataprepper.plugins.sink.buffer.InMemoryBuffer;
 import org.opensearch.dataprepper.plugins.sink.buffer.InMemoryBufferFactory;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.model.CloudWatchLogsException;
@@ -18,7 +16,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -27,7 +24,7 @@ import static org.mockito.Mockito.*;
 
 public class CwlClientTest {
     private CloudWatchLogsClient mockClient;
-    private AuthConfig authConfig;
+    private AwsConfig awsConfig;
     private ClientConfig clientConfig;
     private CwlSinkConfig cwlSinkConfig;
     private Buffer testBuffer;
@@ -40,7 +37,7 @@ public class CwlClientTest {
     private final String DEFAULT_ARN = "test:urn";
     @BeforeEach
     void setUp() {
-        authConfig = mock(AuthConfig.class);
+        awsConfig = mock(AwsConfig.class);
         clientConfig = mock(ClientConfig.class);
         cwlSinkConfig = mock(CwlSinkConfig.class);
 
@@ -49,11 +46,11 @@ public class CwlClientTest {
         when(clientConfig.getBatchSize()).thenReturn(DEFAULT_BATCH_SIZE);
         when(clientConfig.getRetryCount()).thenReturn(DEFAULT_RETRY_COUNT);
         when(clientConfig.getBufferType()).thenReturn("in_memory");
-        when(cwlSinkConfig.getAuthConfig()).thenReturn(authConfig);
+        when(cwlSinkConfig.getAuthConfig()).thenReturn(awsConfig);
         when(cwlSinkConfig.getClientConfig()).thenReturn(clientConfig);
 
-        when(authConfig.getRegion()).thenReturn(DEFAULT_REGION);
-        when(authConfig.getRole_arn()).thenReturn(DEFAULT_ARN);
+        when(awsConfig.getRegion()).thenReturn(DEFAULT_REGION);
+        when(awsConfig.getRole_arn()).thenReturn(DEFAULT_ARN);
     }
 
     CwlClient getClientWithMemoryBuffer() {

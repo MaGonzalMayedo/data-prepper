@@ -3,9 +3,6 @@ package org.opensearch.dataprepper.plugins.sink.main;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.plugins.sink.*;
-import org.opensearch.dataprepper.plugins.sink.buffer.Buffer;
-import org.opensearch.dataprepper.plugins.sink.buffer.InMemoryBuffer;
-import org.opensearch.dataprepper.plugins.sink.buffer.InMemoryBufferFactory;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -14,7 +11,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class CwlSinkTest {
-    private AuthConfig authConfig;
+    private AwsConfig awsConfig;
     private ClientConfig clientConfig;
     private CwlSinkConfig cwlSinkConfig;
 
@@ -32,7 +29,7 @@ public class CwlSinkTest {
 
     @BeforeEach
     void setUp() {
-        authConfig = mock(AuthConfig.class);
+        awsConfig = mock(AwsConfig.class);
         clientConfig = mock(ClientConfig.class);
         cwlSinkConfig = mock(CwlSinkConfig.class);
 
@@ -41,11 +38,11 @@ public class CwlSinkTest {
         when(clientConfig.getBatchSize()).thenReturn(DEFAULT_BATCH_SIZE);
         when(clientConfig.getRetryCount()).thenReturn(DEFAULT_RETRY_COUNT);
         when(clientConfig.getBufferType()).thenReturn("in_memory");
-        when(cwlSinkConfig.getAuthConfig()).thenReturn(authConfig);
+        when(cwlSinkConfig.getAuthConfig()).thenReturn(awsConfig);
         when(cwlSinkConfig.getClientConfig()).thenReturn(clientConfig);
 
-        when(authConfig.getRegion()).thenReturn(DEFAULT_REGION);
-        when(authConfig.getRole_arn()).thenReturn(DEFAULT_ARN);
+        when(awsConfig.getRegion()).thenReturn(DEFAULT_REGION);
+        when(awsConfig.getRole_arn()).thenReturn(DEFAULT_ARN);
     }
 
     @Test

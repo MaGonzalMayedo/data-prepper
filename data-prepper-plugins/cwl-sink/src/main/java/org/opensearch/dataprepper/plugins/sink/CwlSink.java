@@ -5,7 +5,6 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
-import org.opensearch.dataprepper.plugins.sink.buffer.Buffer;
 import org.opensearch.dataprepper.plugins.sink.buffer.BufferFactory;
 import org.opensearch.dataprepper.plugins.sink.buffer.InMemoryBufferFactory;
 import org.slf4j.Logger;
@@ -25,7 +24,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class CwlSink implements Sink<Record<Event>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(CwlSink.class);
-    private final AuthConfig authConfig;
+    private final AwsConfig awsConfig;
     private final ClientConfig clientConfig;
     private CwlClient cwlClient;
     private BufferFactory bufferFactory;
@@ -35,7 +34,7 @@ public class CwlSink implements Sink<Record<Event>> {
 
     @DataPrepperPluginConstructor
     public CwlSink(final CwlSinkConfig cwlSinkConfig) {
-        this.authConfig = cwlSinkConfig.getAuthConfig();
+        this.awsConfig = cwlSinkConfig.getAuthConfig();
         this.clientConfig = cwlSinkConfig.getClientConfig();
         lock = new ReentrantLock(true);
 

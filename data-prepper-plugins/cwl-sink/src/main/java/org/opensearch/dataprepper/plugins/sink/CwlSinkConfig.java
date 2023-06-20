@@ -1,8 +1,6 @@
 package org.opensearch.dataprepper.plugins.sink;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotEmpty;
 
 public class CwlSinkConfig {
 
@@ -11,12 +9,12 @@ public class CwlSinkConfig {
     private ClientConfig clientConfig;
 
     @JsonProperty("auth_config")
-    private AuthConfig authConfig;
+    private AwsConfig awsConfig;
     public ClientConfig getClientConfig() {
         return clientConfig;
     }
 
-    public AuthConfig getAuthConfig() {
-        return authConfig;
+    public AwsConfig getAuthConfig() {
+        return awsConfig;
     }
 }
