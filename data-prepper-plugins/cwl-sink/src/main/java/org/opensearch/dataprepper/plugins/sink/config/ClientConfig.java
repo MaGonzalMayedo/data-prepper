@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.plugins.sink;
+package org.opensearch.dataprepper.plugins.sink.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.introspect.TypeResolutionContext;
@@ -19,32 +19,11 @@ public class ClientConfig {
     @NotEmpty
     private String logStream = null;
 
-    @JsonProperty("buffer_type")
-    private String bufferType = "in_memory";
-
-    @JsonProperty("batch_size")
-    private int batchSize = 10;
-
-    @JsonProperty("retry_count")
-    private int retryCount = 10;
-
     public String getLogGroup() {
         return logGroup;
     }
 
     public String getLogStream() {
         return logStream;
-    }
-
-    public String getBufferType() {
-        return bufferType;
-    }
-
-    public int getBatchSize() {
-        return batchSize;
-    }
-
-    public int getRetryCount() {
-        return retryCount;
     }
 }

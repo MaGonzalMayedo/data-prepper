@@ -3,6 +3,9 @@ package org.opensearch.dataprepper.plugins.sink.main;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.plugins.sink.*;
+import org.opensearch.dataprepper.plugins.sink.config.AwsConfig;
+import org.opensearch.dataprepper.plugins.sink.config.ClientConfig;
+import org.opensearch.dataprepper.plugins.sink.config.CwlSinkConfig;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;

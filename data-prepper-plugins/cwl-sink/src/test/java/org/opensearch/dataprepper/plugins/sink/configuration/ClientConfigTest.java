@@ -1,7 +1,7 @@
 package org.opensearch.dataprepper.plugins.sink.configuration;
 
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.plugins.sink.ClientConfig;
+import org.opensearch.dataprepper.plugins.sink.config.ClientConfig;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
