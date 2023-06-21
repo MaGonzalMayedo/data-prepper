@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
@@ -25,7 +26,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeResponse;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeletePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeRequest;
-import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeResults;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchWithSearchAfterResults;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -113,13 +114,13 @@ public class PitWorkerTest {
         when(searchConfiguration.getBatchSize()).thenReturn(2);
         when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
 
-        final SearchPointInTimeResults searchPointInTimeResults = mock(SearchPointInTimeResults.class);
-        when(searchPointInTimeResults.getNextSearchAfter()).thenReturn(Collections.singletonList(UUID.randomUUID().toString()));
-        when(searchPointInTimeResults.getDocuments()).thenReturn(List.of(mock(Event.class), mock(Event.class))).thenReturn(List.of(mock(Event.class), mock(Event.class)))
+        final SearchWithSearchAfterResults searchWithSearchAfterResults = mock(SearchWithSearchAfterResults.class);
+        when(searchWithSearchAfterResults.getNextSearchAfter()).thenReturn(Collections.singletonList(UUID.randomUUID().toString()));
+        when(searchWithSearchAfterResults.getDocuments()).thenReturn(List.of(mock(Event.class), mock(Event.class))).thenReturn(List.of(mock(Event.class), mock(Event.class)))
                 .thenReturn(List.of(mock(Event.class))).thenReturn(List.of(mock(Event.class)));
 
         final ArgumentCaptor<SearchPointInTimeRequest> searchPointInTimeRequestArgumentCaptor = ArgumentCaptor.forClass(SearchPointInTimeRequest.class);
-        when(searchAccessor.searchWithPit(searchPointInTimeRequestArgumentCaptor.capture())).thenReturn(searchPointInTimeResults);
+        when(searchAccessor.searchWithPit(searchPointInTimeRequestArgumentCaptor.capture())).thenReturn(searchWithSearchAfterResults);
 
         doNothing().when(bufferAccumulator).add(any(Record.class));
         doNothing().when(bufferAccumulator).flush();
@@ -166,7 +167,7 @@ public class PitWorkerTest {
         assertThat(searchPointInTimeRequestList.get(1).getPitId(), equalTo(pitId));
         assertThat(searchPointInTimeRequestList.get(1).getKeepAlive(), equalTo(EXTEND_KEEP_ALIVE_TIME));
         assertThat(searchPointInTimeRequestList.get(1).getPaginationSize(), equalTo(2));
-        assertThat(searchPointInTimeRequestList.get(1).getSearchAfter(), equalTo(searchPointInTimeResults.getNextSearchAfter()));
+        assertThat(searchPointInTimeRequestList.get(1).getSearchAfter(), equalTo(searchWithSearchAfterResults.getNextSearchAfter()));
 
 
         final DeletePointInTimeRequest deletePointInTimeRequest = deleteRequestArgumentCaptor.getValue();
@@ -182,7 +183,9 @@ public class PitWorkerTest {
 
         final OpenSearchIndexProgressState openSearchIndexProgressState = mock(OpenSearchIndexProgressState.class);
         final String pitId = UUID.randomUUID().toString();
+        final List<String> searchAfter = List.of(UUID.randomUUID().toString());
         when(openSearchIndexProgressState.getPitId()).thenReturn(pitId);
+        when(openSearchIndexProgressState.getSearchAfter()).thenReturn(searchAfter);
         when(openSearchIndexProgressState.hasValidPointInTime()).thenReturn(true);
         when(sourcePartition.getPartitionState()).thenReturn(Optional.of(openSearchIndexProgressState));
 
@@ -190,12 +193,12 @@ public class PitWorkerTest {
         when(searchConfiguration.getBatchSize()).thenReturn(2);
         when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
 
-        final SearchPointInTimeResults searchPointInTimeResults = mock(SearchPointInTimeResults.class);
-        when(searchPointInTimeResults.getNextSearchAfter()).thenReturn(Collections.singletonList(UUID.randomUUID().toString()));
-        when(searchPointInTimeResults.getDocuments()).thenReturn(List.of(mock(Event.class), mock(Event.class))).thenReturn(List.of(mock(Event.class), mock(Event.class)))
+        final SearchWithSearchAfterResults searchWithSearchAfterResults = mock(SearchWithSearchAfterResults.class);
+        when(searchWithSearchAfterResults.getNextSearchAfter()).thenReturn(Collections.singletonList(UUID.randomUUID().toString()));
+        when(searchWithSearchAfterResults.getDocuments()).thenReturn(List.of(mock(Event.class), mock(Event.class))).thenReturn(List.of(mock(Event.class), mock(Event.class)))
                 .thenReturn(List.of(mock(Event.class))).thenReturn(List.of(mock(Event.class)));
 
-        when(searchAccessor.searchWithPit(any(SearchPointInTimeRequest.class))).thenReturn(searchPointInTimeResults);
+        when(searchAccessor.searchWithPit(any(SearchPointInTimeRequest.class))).thenReturn(searchWithSearchAfterResults);
 
         doNothing().when(bufferAccumulator).add(any(Record.class));
         doNothing().when(bufferAccumulator).flush();

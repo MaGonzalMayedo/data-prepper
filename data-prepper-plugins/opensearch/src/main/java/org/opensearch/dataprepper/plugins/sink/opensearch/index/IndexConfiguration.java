@@ -36,13 +36,16 @@ public class IndexConfiguration {
     public static final String NUM_SHARDS = "number_of_shards";
     public static final String NUM_REPLICAS = "number_of_replicas";
     public static final String BULK_SIZE = "bulk_size";
+    public static final String FLUSH_TIMEOUT = "flush_timeout";
     public static final String DOCUMENT_ID_FIELD = "document_id_field";
     public static final String ROUTING_FIELD = "routing_field";
     public static final String ISM_POLICY_FILE = "ism_policy_file";
     public static final long DEFAULT_BULK_SIZE = 5L;
+    public static final long DEFAULT_FLUSH_TIMEOUT = 60_000L;
     public static final String ACTION = "action";
     public static final String S3_AWS_REGION = "s3_aws_region";
     public static final String S3_AWS_STS_ROLE_ARN = "s3_aws_sts_role_arn";
+    public static final String S3_AWS_STS_EXTERNAL_ID = "s3_aws_sts_external_id";
     public static final String SERVERLESS = "serverless";
     public static final String AWS_OPTION = "aws";
     public static final String DOCUMENT_ROOT_KEY = "document_root_key";
@@ -54,10 +57,12 @@ public class IndexConfiguration {
     private final String documentIdField;
     private final String routingField;
     private final long bulkSize;
+    private final long flushTimeout;
     private final Optional<String> ismPolicyFile;
     private final String action;
     private final String s3AwsRegion;
     private final String s3AwsStsRoleArn;
+    private final String s3AwsExternalId;
     private final S3Client s3Client;
     private final boolean serverless;
     private final String documentRootKey;
@@ -72,6 +77,7 @@ public class IndexConfiguration {
 
         this.s3AwsRegion = builder.s3AwsRegion;
         this.s3AwsStsRoleArn = builder.s3AwsStsRoleArn;
+        this.s3AwsExternalId = builder.s3AwsStsExternalId;
         this.s3Client = builder.s3Client;
 
         this.templateType = builder.templateType != null ? builder.templateType : TemplateType.V1;
@@ -97,6 +103,7 @@ public class IndexConfiguration {
         }
         this.indexAlias = indexAlias;
         this.bulkSize = builder.bulkSize;
+        this.flushTimeout = builder.flushTimeout;
         this.routingField = builder.routingField;
 
         String documentIdField = builder.documentIdField;
@@ -146,6 +153,8 @@ public class IndexConfiguration {
         builder = builder.withNumReplicas(pluginSetting.getIntegerOrDefault(NUM_REPLICAS, 0));
         final Long batchSize = pluginSetting.getLongOrDefault(BULK_SIZE, DEFAULT_BULK_SIZE);
         builder = builder.withBulkSize(batchSize);
+        final long flushTimeout = pluginSetting.getLongOrDefault(FLUSH_TIMEOUT, DEFAULT_FLUSH_TIMEOUT);
+        builder = builder.withFlushTimeout(flushTimeout);
         final String documentId = pluginSetting.getStringOrDefault(DOCUMENT_ID_FIELD, null);
         if (documentId != null) {
             builder = builder.withDocumentIdField(documentId);
@@ -164,8 +173,10 @@ public class IndexConfiguration {
             || (builder.ismPolicyFile.isPresent() && builder.ismPolicyFile.get().startsWith(S3_PREFIX))) {
             builder.withS3AwsRegion(pluginSetting.getStringOrDefault(S3_AWS_REGION, DEFAULT_AWS_REGION));
             builder.withS3AWSStsRoleArn(pluginSetting.getStringOrDefault(S3_AWS_STS_ROLE_ARN, null));
+            builder.withS3AWSStsExternalId(pluginSetting.getStringOrDefault(S3_AWS_STS_EXTERNAL_ID, null));
 
-            final S3ClientProvider clientProvider = new S3ClientProvider(builder.s3AwsRegion, builder.s3AwsStsRoleArn);
+            final S3ClientProvider clientProvider = new S3ClientProvider(
+                builder.s3AwsRegion, builder.s3AwsStsRoleArn, builder.s3AwsStsExternalId);
             builder.withS3Client(clientProvider.buildS3Client());
         }
 
@@ -210,6 +221,10 @@ public class IndexConfiguration {
         return bulkSize;
     }
 
+    public long getFlushTimeout() {
+        return flushTimeout;
+    }
+
     public Optional<String> getIsmPolicyFile() {
         return ismPolicyFile;
     }
@@ -224,6 +239,10 @@ public class IndexConfiguration {
 
     public String getS3AwsStsRoleArn() {
         return s3AwsStsRoleArn;
+    }
+
+    public String getS3AwsStsExternalId() {
+        return s3AwsExternalId;
     }
 
     public boolean getServerless() {
@@ -290,10 +309,12 @@ public class IndexConfiguration {
         private String routingField;
         private String documentIdField;
         private long bulkSize = DEFAULT_BULK_SIZE;
+        private long flushTimeout = DEFAULT_FLUSH_TIMEOUT;
         private Optional<String> ismPolicyFile;
         private String action;
         private String s3AwsRegion;
         private String s3AwsStsRoleArn;
+        private String s3AwsStsExternalId;
         private S3Client s3Client;
         private boolean serverless;
         private String documentRootKey;
@@ -341,6 +362,11 @@ public class IndexConfiguration {
             return this;
         }
 
+        public Builder withFlushTimeout(final long flushTimeout) {
+            this.flushTimeout = flushTimeout;
+            return this;
+        }
+
         public Builder withNumShards(final int numShards) {
             this.numShards = numShards;
             return this;
@@ -378,6 +404,12 @@ public class IndexConfiguration {
                 }
             }
             this.s3AwsStsRoleArn = s3AwsStsRoleArn;
+            return this;
+        }
+
+        public Builder withS3AWSStsExternalId(final String s3AwsStsExternalId) {
+            checkArgument(s3AwsStsExternalId == null || s3AwsStsExternalId.length() <= 1224, "s3AwsStsExternalId length cannot exceed 1224");
+            this.s3AwsStsExternalId = s3AwsStsExternalId;
             return this;
         }
 
