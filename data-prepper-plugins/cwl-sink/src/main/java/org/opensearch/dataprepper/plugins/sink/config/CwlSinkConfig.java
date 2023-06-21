@@ -1,7 +1,9 @@
 package org.opensearch.dataprepper.plugins.sink.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.plugins.sink.configuration.AwsAuthenticationOptions;
 
 public class CwlSinkConfig {
@@ -9,9 +11,12 @@ public class CwlSinkConfig {
 
     //Class was utilized from the
     @JsonProperty("aws_config")
+    @NotNull
+    @Valid
     private AwsAuthenticationOptions awsConfig;
 
     @JsonProperty("threshold_config")
+    @NotNull
     private ThresholdConfig thresholdConfig;
 
     @JsonProperty("buffer_type")
@@ -19,11 +24,13 @@ public class CwlSinkConfig {
 
     @JsonProperty("log_group")
     @NotEmpty
-    private String logGroup = null;
+    @NotNull
+    private String logGroup;
 
     @JsonProperty("log_stream")
     @NotEmpty
-    private String logStream = null;
+    @NotNull
+    private String logStream;
 
     public AwsAuthenticationOptions getAwsConfig() {
         return awsConfig;

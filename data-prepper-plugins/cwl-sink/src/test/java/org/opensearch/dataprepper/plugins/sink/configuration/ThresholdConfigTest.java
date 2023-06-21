@@ -21,7 +21,7 @@ public class ThresholdConfigTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {10, 25, 100})
+    @ValueSource(ints = {1, 10, 10000})
     void check_valid_batch_size(final int batchSize) {
         final Map<String, Integer> jsonMap = Map.of("batch_size", batchSize);
         final ThresholdConfig thresholdConfigTest = objectMapper.convertValue(jsonMap, ThresholdConfig.class);
@@ -29,7 +29,7 @@ public class ThresholdConfigTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {10, 25, 100})
+    @ValueSource(ints = {1, 10, 256})
     void check_valid_max_event_size(final int max_event_size) {
         final Map<String, Integer> jsonMap = Map.of("max_event_size", max_event_size);
         final ThresholdConfig thresholdConfigTest = objectMapper.convertValue(jsonMap, ThresholdConfig.class);
