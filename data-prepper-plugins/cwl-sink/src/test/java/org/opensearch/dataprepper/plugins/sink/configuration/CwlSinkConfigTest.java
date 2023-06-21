@@ -24,11 +24,21 @@ public class CwlSinkConfigTest {
 
     @Test
     void check_null_auth_config_test() {
-        assertThat(new CwlSinkConfig().getAuthConfig(), equalTo(null));
+        assertThat(new CwlSinkConfig().getAwsConfig(), equalTo(null));
     }
 
     @Test
-    void check_null_client_config_test() {
-        assertThat(new CwlSinkConfig().getClientConfig(), equalTo(null));
+    void check_default_buffer_type_test() {
+        assertThat(new CwlSinkConfig().getBufferType(), equalTo(CwlSinkConfig.DEFAULT_BUFFER_TYPE));
     }
+
+    @Test
+    void check_null_log_group_test() {
+        assertThat(new CwlSinkConfig().getLogGroup(), equalTo(null));
+    }
+    @Test
+    void check_null_log_stream_test() {
+        assertThat(new CwlSinkConfig().getLogStream(), equalTo(null));
+    }
+
 }

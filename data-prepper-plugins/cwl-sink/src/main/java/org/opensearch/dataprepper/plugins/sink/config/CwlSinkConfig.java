@@ -1,17 +1,15 @@
 package org.opensearch.dataprepper.plugins.sink.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.opensearch.dataprepper.plugins.sink.config.AwsConfig;
-import org.opensearch.dataprepper.plugins.sink.config.ClientConfig;
+import jakarta.validation.constraints.NotEmpty;
+import org.opensearch.dataprepper.plugins.sink.configuration.AwsAuthenticationOptions;
 
 public class CwlSinkConfig {
     public static final String DEFAULT_BUFFER_TYPE = "in_memory";
 
-    @JsonProperty("client_config")
-    private ClientConfig clientConfig;
-
+    //Class was utilized from the
     @JsonProperty("aws_config")
-    private AwsConfig awsConfig;
+    private AwsAuthenticationOptions awsConfig;
 
     @JsonProperty("threshold_config")
     private ThresholdConfig thresholdConfig;
@@ -19,11 +17,15 @@ public class CwlSinkConfig {
     @JsonProperty("buffer_type")
     private String bufferType = DEFAULT_BUFFER_TYPE;
 
-    public ClientConfig getClientConfig() {
-        return clientConfig;
-    }
+    @JsonProperty("log_group")
+    @NotEmpty
+    private String logGroup = null;
 
-    public AwsConfig getAwsConfig() {
+    @JsonProperty("log_stream")
+    @NotEmpty
+    private String logStream = null;
+
+    public AwsAuthenticationOptions getAwsConfig() {
         return awsConfig;
     }
 
@@ -33,5 +35,13 @@ public class CwlSinkConfig {
 
     public String getBufferType() {
         return bufferType;
+    }
+
+    public String getLogGroup() {
+        return logGroup;
+    }
+
+    public String getLogStream() {
+        return logStream;
     }
 }
