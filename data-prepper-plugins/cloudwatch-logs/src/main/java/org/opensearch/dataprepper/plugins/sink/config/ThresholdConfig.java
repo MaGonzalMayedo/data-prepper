@@ -14,7 +14,7 @@ public class ThresholdConfig {
     public static final int DEFAULT_SIZE_OF_REQUEST = 524288;
     public static final int DEFAULT_RETRY_COUNT = 5;
     public static final int DEFAULT_LOG_SEND_INTERVAL_TIME = 60;
-    public static final int DEFAULT_BACKOFF_TIME = 5000;
+    public static final int DEFAULT_BACKOFF_TIME = 500;
 
     @JsonProperty("batch_size")
     @Size(min = 1, max = 10000, message = "batch_size amount should be between 1 to 10000")
