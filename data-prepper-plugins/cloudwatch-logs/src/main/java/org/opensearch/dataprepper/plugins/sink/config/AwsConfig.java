@@ -9,6 +9,8 @@ import jakarta.validation.constraints.Size;
 import software.amazon.awssdk.regions.Region;
 import java.util.Map;
 
+import java.util.Map;
+
 /**
  * AwsConfig is based on the S3-Sink AwsAuthenticationOptions
  * where the configuration allows the sink to fetch Aws credentials
@@ -32,6 +34,10 @@ public class AwsConfig {
     @JsonProperty("sts_external_id")
     @Size(min = 2, max = 1224, message = "awsStsExternalId length should be between 2 and 1224 characters")
     private String awsStsExternalId;
+
+    public int getDEFAULT_CONNECTION_ATTEMPTS() {
+        return DEFAULT_CONNECTION_ATTEMPTS;
+    }
 
     public Region getAwsRegion() {
         return awsRegion != null ? Region.of(awsRegion) : null;
