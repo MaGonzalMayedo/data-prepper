@@ -14,6 +14,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
+//TODO: Need to add e2e testing here to test this the range of the acquired events by CWL.
+
 public class CwlClient {
     private static final Logger LOG = LoggerFactory.getLogger(CwlClient.class);
     private final CloudWatchLogsClient cloudWatchLogsClient;
@@ -115,8 +117,6 @@ public class CwlClient {
                     as currently the logs that are able to be published but rejected by CloudWatch Logs will simply be deleted if not deferred to
                     a backup storage.
                  */
-
-                //TODO: Need to add e2e testing here to test this the range of the acquired events by CWL.
 
                 logEventSuccessCounter += Math.max(rejectedLogEventsInfo.tooNewLogEventStartIndex() - Math.max(rejectedLogEventsInfo.tooOldLogEventEndIndex(), rejectedLogEventsInfo.expiredLogEventEndIndex()) - 1, 0);
                 failedPost = false;
