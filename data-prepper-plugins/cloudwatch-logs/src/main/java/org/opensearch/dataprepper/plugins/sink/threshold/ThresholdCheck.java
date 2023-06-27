@@ -16,7 +16,7 @@ public class ThresholdCheck {
     private final int batchSize;
     private final int maxEventSize;
     private final int maxRequestSize;
-    private final int logSendInterval;
+    private final long logSendInterval;
 
     ThresholdCheck (int batchSize, int maxEventSize, int maxRequestSize, int logSendInterval) {
         this.batchSize = batchSize;
@@ -31,7 +31,7 @@ public class ThresholdCheck {
      * @param currentTime int
      * @return boolean - true if greater than or equal to logInterval, false otherwise.
      */
-    public boolean checkLogSendInterval(int currentTime) {
+    public boolean checkLogSendInterval(long currentTime) {
         return currentTime >= logSendInterval;
     }
 

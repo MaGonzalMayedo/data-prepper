@@ -15,7 +15,6 @@ import jakarta.validation.constraints.Size;
  */
 public class ThresholdConfig {
     public static final int DEFAULT_BATCH_SIZE = 25;
-
     public static final int DEFAULT_EVENT_SIZE = 50;
     public static final int DEFAULT_SIZE_OF_REQUEST = 524288;
     public static final int DEFAULT_RETRY_COUNT = 5;
@@ -23,7 +22,7 @@ public class ThresholdConfig {
     public static final int DEFAULT_BACKOFF_TIME = 500;
 
     @JsonProperty("batch_size")
-    @Size(min = 1, max = 10, message = "batch_size amount should be between 1 to 10")
+    @Size(min = 1, max = 10000, message = "batch_size amount should be between 1 to 10000")
     private int batchSize = DEFAULT_BATCH_SIZE;
 
     @JsonProperty("max_event_size")
