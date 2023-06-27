@@ -8,10 +8,7 @@ import org.opensearch.dataprepper.plugins.sink.threshold.ThresholdCheck;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
-import software.amazon.awssdk.services.cloudwatchlogs.model.CloudWatchLogsException;
-import software.amazon.awssdk.services.cloudwatchlogs.model.InputLogEvent;
-import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsRequest;
-import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsResponse;
+import software.amazon.awssdk.services.cloudwatchlogs.model.*;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -24,8 +21,8 @@ public class CwlClient {
     private final ThresholdCheck thresholdCheck;
     private final String logGroup;
     private final String logStream;
-    private final int maxLogsQueued = 0; //TODO: Make use of this parameter if needed.
     private final int retryCount;
+    private int succeedCount = 0; //Counter to be used on the fly for counting successful transmissions. (Success per single event successfully published).
     private int failCount = 0; //Counter to be used on the fly during error handling.
     private boolean failedPost;
     private final StopWatch stopWatch;
@@ -65,10 +62,10 @@ public class CwlClient {
 
             //Conditions for pushingLogs to CWL services:
             if (thresholdCheck.checkBatchSize(buffer.getEventCount()) || thresholdCheck.checkLogSendInterval(getStopWatchTime())
-                    || thresholdCheck.checkMaxRequestSize(buffer.getBufferSize())) {
+                    || thresholdCheck.checkMaxRequestSize(buffer.getBufferSize() + logLength)) {
                 LOG.info("Attempting to push logs!");
                 pushLogs();
-                stopStopWatch();
+                stopAndResetStopWatch();
             }
 
             buffer.writeEvent(logJsonString.getBytes());
@@ -96,9 +93,23 @@ public class CwlClient {
                         .build();
 
                 PutLogEventsResponse putLogEventsResponse = cloudWatchLogsClient.putLogEvents(putLogEventsRequest);
+                RejectedLogEventsInfo rejectedLogEventsInfo = putLogEventsResponse.rejectedLogEventsInfo();
 
-                //Insert logic for resending the logEvents that did not work and retry attempts.
+                if (rejectedLogEventsInfo == null) {
+                    succeedCount += logEventList.size();
+                    failedPost = false;
+                    continue;
+                }
 
+                //TODO: Can wrap this up in a function call for ease of access:
+                LOG.warn("Some logs were rejected!");
+                LOG.warn("Too new log event start index: " + rejectedLogEventsInfo.tooNewLogEventStartIndex());
+                LOG.warn("Too old log  event end index: " + rejectedLogEventsInfo.tooOldLogEventEndIndex());
+                LOG.warn("Expired log event end index: " + rejectedLogEventsInfo.expiredLogEventEndIndex());
+
+                //TODO: Can add DLQ logic here for sending these logs to a particular DLQ for error checking. (Explicitly for bad formatted logs).
+                //TODO: Need to add e2e testing here to test this the range of the acquired events by CWL.
+                succeedCount += Math.max(rejectedLogEventsInfo.tooNewLogEventStartIndex() - Math.max(rejectedLogEventsInfo.tooOldLogEventEndIndex(), rejectedLogEventsInfo.expiredLogEventEndIndex()) - 1, 0);
                 failedPost = false;
             } catch (CloudWatchLogsException e) {
                 LOG.error("Failed to push logs with error: {}", e.getMessage());
@@ -124,7 +135,7 @@ public class CwlClient {
         stopWatch.start();
     }
 
-    private void stopStopWatch() {
+    private void stopAndResetStopWatch() {
         stopWatchOn = false;
         stopWatch.stop();
         stopWatch.reset();
