@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.plugins.sink;
+package org.opensearch.dataprepper.plugins.sink.client;
 
 import org.apache.commons.lang3.time.StopWatch;
 import org.opensearch.dataprepper.model.event.Event;
@@ -7,6 +7,8 @@ import org.opensearch.dataprepper.plugins.sink.buffer.Buffer;
 import org.opensearch.dataprepper.plugins.sink.threshold.ThresholdCheck;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
+import software.amazon.awssdk.core.exception.RetryableException;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.model.*;
 
@@ -120,7 +122,7 @@ public class CwlClient {
 
                 logEventSuccessCounter += Math.max(rejectedLogEventsInfo.tooNewLogEventStartIndex() - Math.max(rejectedLogEventsInfo.tooOldLogEventEndIndex(), rejectedLogEventsInfo.expiredLogEventEndIndex()) - 1, 0);
                 failedPost = false;
-            } catch (CloudWatchLogsException e) {
+            } catch (AwsServiceException | RetryableException e) {
                 LOG.error("Failed to push logs with error: {}", e.getMessage());
 
                 try {
