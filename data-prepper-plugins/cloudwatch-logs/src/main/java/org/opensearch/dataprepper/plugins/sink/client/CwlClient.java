@@ -1,5 +1,6 @@
 package org.opensearch.dataprepper.plugins.sink.client;
 
+import io.micrometer.core.instrument.Counter;
 import org.apache.commons.lang3.time.StopWatch;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
@@ -10,7 +11,6 @@ import org.opensearch.dataprepper.plugins.sink.config.CwlSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.threshold.ThresholdCheck;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.w3c.dom.css.Counter;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.core.exception.RetryableException;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
@@ -18,8 +18,6 @@ import software.amazon.awssdk.services.cloudwatchlogs.model.InputLogEvent;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsResponse;
 import software.amazon.awssdk.services.cloudwatchlogs.model.RejectedLogEventsInfo;
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.DistributionSummary;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -27,6 +25,11 @@ import java.util.LinkedList;
 import java.util.concurrent.TimeUnit;
 
 //TODO: Need to add e2e testing here to test this the range of the acquired events by CWL.
+
+                /*TODO: Can add DLQ logic here for sending these logs to a particular DLQ for error checking. (Explicitly for bad formatted logs).
+                    as currently the logs that are able to be published but rejected by CloudWatch Logs will simply be deleted if not deferred to
+                    a backup storage.
+                 */
 
 public class CwlClient {
     public static final String NUMBER_OF_RECORDS_PUSHED_TO_CWL_SUCCESS = "cloudWatchLogsEventsSucceeded";
@@ -41,10 +44,11 @@ public class CwlClient {
     private final String logGroup;
     private final String logStream;
     private final int retryCount;
-    private Counter logEventSuccessCounter; //Counter to be used on the fly for counting successful transmissions. (Success per single event successfully published).
+    private io.micrometer.core.instrument.Counter logEventSuccessCounter; //Counter to be used on the fly for counting successful transmissions. (Success per single event successfully published).
     private Counter requestSuccessCount;
-    private Counter logEventFailCounter;
-    private Counter requestFailCount; //Counter to be used on the fly during error handling.
+    private io.micrometer.core.instrument.Counter logEventFailCounter;
+    private io.micrometer.core.instrument.Counter requestFailCount; //Counter to be used on the fly during error handling.
+    private int failCounter = 0;
     private final int backOffTime;
     private boolean failedPost;
     private final StopWatch stopWatch;
@@ -59,13 +63,14 @@ public class CwlClient {
         this.logStream = cwlSinkConfig.getLogStream();
         this.thresholdCheck = thresholdCheck;
 
-
         this.retryCount = retryCount;
         this.backOffTime = backOffTime;
 
         this.bufferedEventHandles = new LinkedList<>();
         this.logEventSuccessCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_PUSHED_TO_CWL_SUCCESS);
-
+        this.requestFailCount = pluginMetrics.counter(REQUESTS_FAILED);
+        this.logEventFailCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_PUSHED_TO_CWL_FAIL);
+        this.requestSuccessCount = pluginMetrics.counter(REQUESTS_SUCCEEDED);
 
         stopWatch = StopWatch.create();
         stopWatchOn = false;
@@ -114,7 +119,7 @@ public class CwlClient {
             logEventList.add(tempLogEvent);
         }
 
-        while (failedPost && (failCount < retryCount)) {
+        while (failedPost && (requestFailCount.count() < retryCount)) {
             try {
                 PutLogEventsRequest putLogEventsRequest = PutLogEventsRequest.builder()
                         .logEvents(logEventList)
@@ -126,8 +131,8 @@ public class CwlClient {
                 RejectedLogEventsInfo rejectedLogEventsInfo = putLogEventsResponse.rejectedLogEventsInfo();
 
                 if (rejectedLogEventsInfo == null) {
-                    successCount++;
-                    logEventSuccessCounter += logEventList.size();
+                    requestSuccessCount.increment();
+                    logEventSuccessCounter.increment(logEventList.size());
                     failedPost = false;
                     continue;
                 }
@@ -137,16 +142,11 @@ public class CwlClient {
                 LOG.warn("Too old log  event end index: " + rejectedLogEventsInfo.tooOldLogEventEndIndex());
                 LOG.warn("Expired log event end index: " + rejectedLogEventsInfo.expiredLogEventEndIndex());
 
-                /*TODO: Can add DLQ logic here for sending these logs to a particular DLQ for error checking. (Explicitly for bad formatted logs).
-                    as currently the logs that are able to be published but rejected by CloudWatch Logs will simply be deleted if not deferred to
-                    a backup storage.
-                 */
-
                 /*
                     TODO: Need to implement releaseHandle function where we release handles of events that were rejected by CWL service.
                  */
 
-                logEventSuccessCounter += Math.max(rejectedLogEventsInfo.tooNewLogEventStartIndex() - Math.max(rejectedLogEventsInfo.tooOldLogEventEndIndex(), rejectedLogEventsInfo.expiredLogEventEndIndex()) - 1, 0);
+                logEventSuccessCounter.increment(Math.max(rejectedLogEventsInfo.tooNewLogEventStartIndex() - Math.max(rejectedLogEventsInfo.tooOldLogEventEndIndex(), rejectedLogEventsInfo.expiredLogEventEndIndex()) - 1, 0));
                 failedPost = false;
             } catch (AwsServiceException | RetryableException e) {
                 LOG.error("Failed to push logs with error: {}", e.getMessage());
@@ -158,8 +158,9 @@ public class CwlClient {
                 }
 
                 LOG.warn("Trying to retransmit request...");
-                logEventFailCounter += logEventList.size();
-                failCount++;
+                logEventFailCounter.increment(logEventList.size());
+                requestFailCount.increment();
+                failCounter += 1;
             }
         }
 
@@ -167,7 +168,7 @@ public class CwlClient {
             LOG.error("Error, timed out trying to push logs!");
             throw new RuntimeException("Error, timed out trying to push logs! (Max retry_count reached)");
         } else {
-            failCount = 0;
+            failCounter = 0;
         }
     }
 
@@ -177,7 +178,7 @@ public class CwlClient {
      * @return long - The backoff time that represents the new wait time between retries.
      */
     private long calculateBackOffTime() {
-        return ((long) Math.pow(2, failCount)) * 500;
+        return ((long) Math.pow(2, failCounter)) * 500;
     }
 
     public void shutdown() {
