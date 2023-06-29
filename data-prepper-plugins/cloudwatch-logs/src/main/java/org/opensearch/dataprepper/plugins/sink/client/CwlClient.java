@@ -1,50 +1,72 @@
 package org.opensearch.dataprepper.plugins.sink.client;
 
 import org.apache.commons.lang3.time.StopWatch;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.sink.buffer.Buffer;
+import org.opensearch.dataprepper.plugins.sink.config.CwlSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.threshold.ThresholdCheck;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.w3c.dom.css.Counter;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.core.exception.RetryableException;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
-import software.amazon.awssdk.services.cloudwatchlogs.model.*;
+import software.amazon.awssdk.services.cloudwatchlogs.model.InputLogEvent;
+import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsRequest;
+import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsResponse;
+import software.amazon.awssdk.services.cloudwatchlogs.model.RejectedLogEventsInfo;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedList;
 import java.util.concurrent.TimeUnit;
 
 //TODO: Need to add e2e testing here to test this the range of the acquired events by CWL.
 
 public class CwlClient {
+    public static final String NUMBER_OF_RECORDS_PUSHED_TO_CWL_SUCCESS = "cloudWatchLogsEventsSucceeded";
+    public static final String NUMBER_OF_RECORDS_PUSHED_TO_CWL_FAIL = "cloudWatchLogsEventsFailed";
+    public static final String REQUESTS_SUCCEEDED = "cloudWatchLogsRequestsSucceeded";
+    public static final String REQUESTS_FAILED = "cloudWatchLogsRequestsFailed";
     private static final Logger LOG = LoggerFactory.getLogger(CwlClient.class);
     private final CloudWatchLogsClient cloudWatchLogsClient;
     private final Buffer buffer;
     private final ThresholdCheck thresholdCheck;
+    private final Collection<EventHandle> bufferedEventHandles;
     private final String logGroup;
     private final String logStream;
     private final int retryCount;
-    private int logEventSuccessCounter = 0; //Counter to be used on the fly for counting successful transmissions. (Success per single event successfully published).
-    private int successCount = 0;
-    private int logEventFailCounter = 0;
-    private int failCount = 0; //Counter to be used on the fly during error handling.
+    private Counter logEventSuccessCounter; //Counter to be used on the fly for counting successful transmissions. (Success per single event successfully published).
+    private Counter requestSuccessCount;
+    private Counter logEventFailCounter;
+    private Counter requestFailCount; //Counter to be used on the fly during error handling.
     private final int backOffTime;
     private boolean failedPost;
     private final StopWatch stopWatch;
     private boolean stopWatchOn;
 
-    CwlClient(final CloudWatchLogsClient cloudWatchLogsClient, final Buffer buffer,
-              final ThresholdCheck thresholdCheck, String logGroup, final String logStream, final int batchSize, final int retryCount, final int backOffTime) {
+    CwlClient(final CloudWatchLogsClient cloudWatchLogsClient, final CwlSinkConfig cwlSinkConfig, final Buffer buffer,
+              final PluginMetrics pluginMetrics, final ThresholdCheck thresholdCheck, final int retryCount, final int backOffTime) {
 
         this.cloudWatchLogsClient = cloudWatchLogsClient;
         this.buffer = buffer;
-        this.logGroup = logGroup;
-        this.logStream = logStream;
+        this.logGroup = cwlSinkConfig.getLogGroup();
+        this.logStream = cwlSinkConfig.getLogStream();
         this.thresholdCheck = thresholdCheck;
+
+
         this.retryCount = retryCount;
         this.backOffTime = backOffTime;
+
+        this.bufferedEventHandles = new LinkedList<>();
+        this.logEventSuccessCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_PUSHED_TO_CWL_SUCCESS);
+
+
         stopWatch = StopWatch.create();
         stopWatchOn = false;
     }
@@ -52,7 +74,7 @@ public class CwlClient {
     /**
      * Function handles the packaging of events into log events before sending a bulk request to CWL.
      * Implements simple batch limit buffer. (Sends once batch size is reached)
-     * @param logs Collection of Record events which hold log data.
+     * @param logs - Collection of Record events which hold log data.
      */
     public void output(final Collection<Record<Event>> logs) {
         for (Record<Event> singleLog: logs) {
@@ -120,13 +142,17 @@ public class CwlClient {
                     a backup storage.
                  */
 
+                /*
+                    TODO: Need to implement releaseHandle function where we release handles of events that were rejected by CWL service.
+                 */
+
                 logEventSuccessCounter += Math.max(rejectedLogEventsInfo.tooNewLogEventStartIndex() - Math.max(rejectedLogEventsInfo.tooOldLogEventEndIndex(), rejectedLogEventsInfo.expiredLogEventEndIndex()) - 1, 0);
                 failedPost = false;
             } catch (AwsServiceException | RetryableException e) {
                 LOG.error("Failed to push logs with error: {}", e.getMessage());
 
                 try {
-                    Thread.sleep(calculateBackOffTime(backOffTime));
+                    Thread.sleep(calculateBackOffTime());
                 } catch (InterruptedException i) {
                     throw new RuntimeException(i.getMessage());
                 }
@@ -145,7 +171,12 @@ public class CwlClient {
         }
     }
 
-    private long calculateBackOffTime(long backOffTime) {
+    /**
+     * Backoff function that calculates the exponential back off time
+     * based on the current attempt count.
+     * @return long - The backoff time that represents the new wait time between retries.
+     */
+    private long calculateBackOffTime() {
         return ((long) Math.pow(2, failCount)) * 500;
     }
 

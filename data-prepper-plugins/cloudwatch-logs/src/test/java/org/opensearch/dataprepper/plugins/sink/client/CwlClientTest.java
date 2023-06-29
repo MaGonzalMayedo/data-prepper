@@ -2,10 +2,13 @@ package org.opensearch.dataprepper.plugins.sink.client;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.sink.buffer.Buffer;
+import org.opensearch.dataprepper.plugins.sink.buffer.BufferFactory;
+import org.opensearch.dataprepper.plugins.sink.buffer.InMemoryBuffer;
 import org.opensearch.dataprepper.plugins.sink.buffer.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.sink.config.AwsConfig;
 import org.opensearch.dataprepper.plugins.sink.config.CwlSinkConfig;
@@ -17,6 +20,8 @@ import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsRequest;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -29,19 +34,27 @@ public class CwlClientTest {
     private CwlSinkConfig cwlSinkConfig;
     private ThresholdConfig thresholdConfig;
     private AwsConfig awsConfig;
-    private Buffer testBuffer;
+    private AwsCredentialsSupplier awsCredentialsSupplier;
+    private BufferFactory bufferFactory;
+    private Buffer buffer;
     private final String TEST_LOG_GROUP = "TESTGROUP";
     private final String TEST_LOG_STREAM = "TESTSTREAM";
     private final int DEFAULT_BATCH_SIZE = 10;
     private final int DEFAULT_RETRY_COUNT = 10;
-
     private final String DEFAULT_REGION = "us-east-1";
     private final String DEFAULT_ARN = "test:urn";
     @BeforeEach
     void setUp() {
         cwlSinkConfig = mock(CwlSinkConfig.class);
-        thresholdConfig = new ThresholdConfig();
+        thresholdConfig = new ThresholdConfig(); //Class can stay as is.
         awsConfig = mock(AwsConfig.class);
+        bufferFactory = mock(InMemoryBufferFactory.class);
+        buffer = mock(InMemoryBuffer.class);
+        awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
+
+        final String stsRoleArn = UUID.randomUUID().toString();
+        final String externalId = UUID.randomUUID().toString();
+        final Map<String, String> stsHeaderOverrides = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
 
         when(cwlSinkConfig.getLogGroup()).thenReturn(TEST_LOG_GROUP);
         when(cwlSinkConfig.getLogStream()).thenReturn(TEST_LOG_STREAM);
@@ -50,12 +63,14 @@ public class CwlClientTest {
         when(cwlSinkConfig.getThresholdConfig()).thenReturn(thresholdConfig);
 
         when(awsConfig.getAwsRegion()).thenReturn(Region.US_EAST_1);
-        when()
+        when(awsConfig.getAwsStsRoleArn()).thenReturn(stsRoleArn);
+        when(awsConfig.getAwsStsHeaderOverrides()).thenReturn(stsHeaderOverrides);
+        when(awsConfig.getAwsStsExternalId()).thenReturn(externalId);
     }
 
     CwlClient getClientWithMemoryBuffer() {
-        CwlClient cwlSinkClient = new CwlClient(testBuffer, clientConfig.getLogGroup(), clientConfig.getLogStream(),
-                clientConfig.getBatchSize(), clientConfig.getRetryCount());
+        CwlClient cwlSinkClient = new CwlClient(buffer, clientConfig.getLogGroup(), clientConfig.getLogStream(),
+                 clientConfig.getRetryCount(), );
         cwlSinkClient.setCloudWatchLogsClient(mockClient);
 
         return cwlSinkClient;
@@ -72,7 +87,7 @@ public class CwlClientTest {
     }
 
     void setBufferWithData() {
-        testBuffer = new InMemoryBufferFactory().getBuffer();
+        buffer = new InMemoryBufferFactory().getBuffer();
     }
 
     Collection<Record<Event>> getSampleRecords() {
