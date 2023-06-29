@@ -8,6 +8,7 @@ import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.sink.buffer.Buffer;
 import org.opensearch.dataprepper.plugins.sink.config.CwlSinkConfig;
+import org.opensearch.dataprepper.plugins.sink.exception.RetransmissionLimitException;
 import org.opensearch.dataprepper.plugins.sink.threshold.ThresholdCheck;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +32,8 @@ import java.util.concurrent.TimeUnit;
                     a backup storage.
                  */
 
+//TODO: Can inject another class for the stopWatch functionality.
+
 public class CwlClient {
     public static final String NUMBER_OF_RECORDS_PUSHED_TO_CWL_SUCCESS = "cloudWatchLogsEventsSucceeded";
     public static final String NUMBER_OF_RECORDS_PUSHED_TO_CWL_FAIL = "cloudWatchLogsEventsFailed";
@@ -44,18 +47,17 @@ public class CwlClient {
     private final String logGroup;
     private final String logStream;
     private final int retryCount;
-    private io.micrometer.core.instrument.Counter logEventSuccessCounter; //Counter to be used on the fly for counting successful transmissions. (Success per single event successfully published).
-    private Counter requestSuccessCount;
-    private io.micrometer.core.instrument.Counter logEventFailCounter;
-    private io.micrometer.core.instrument.Counter requestFailCount; //Counter to be used on the fly during error handling.
+    private final io.micrometer.core.instrument.Counter logEventSuccessCounter; //Counter to be used on the fly for counting successful transmissions. (Success per single event successfully published).
+    private final Counter requestSuccessCount;
+    private final io.micrometer.core.instrument.Counter logEventFailCounter;
+    private final io.micrometer.core.instrument.Counter requestFailCount; //Counter to be used on the fly during error handling.
     private int failCounter = 0;
-    private final int backOffTime;
     private boolean failedPost;
     private final StopWatch stopWatch;
     private boolean stopWatchOn;
 
     CwlClient(final CloudWatchLogsClient cloudWatchLogsClient, final CwlSinkConfig cwlSinkConfig, final Buffer buffer,
-              final PluginMetrics pluginMetrics, final ThresholdCheck thresholdCheck, final int retryCount, final int backOffTime) {
+              final PluginMetrics pluginMetrics, final ThresholdCheck thresholdCheck, final int retryCount) {
 
         this.cloudWatchLogsClient = cloudWatchLogsClient;
         this.buffer = buffer;
@@ -64,7 +66,6 @@ public class CwlClient {
         this.thresholdCheck = thresholdCheck;
 
         this.retryCount = retryCount;
-        this.backOffTime = backOffTime;
 
         this.bufferedEventHandles = new LinkedList<>();
         this.logEventSuccessCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_PUSHED_TO_CWL_SUCCESS);
@@ -95,9 +96,14 @@ public class CwlClient {
                 continue;
             }
 
+            boolean testBatchCond = thresholdCheck.checkBatchSize(buffer.getEventCount());
+            boolean testLogSendInterval = thresholdCheck.checkLogSendInterval(getStopWatchTime());
+            boolean testMaxRequestSize = thresholdCheck.checkMaxRequestSize(buffer.getBufferSize() + logLength);
+            long stopWatchTime = getStopWatchTime();
+
             //Conditions for pushingLogs to CWL services:
-            if (thresholdCheck.checkBatchSize(buffer.getEventCount()) || thresholdCheck.checkLogSendInterval(getStopWatchTime())
-                    || thresholdCheck.checkMaxRequestSize(buffer.getBufferSize() + logLength)) {
+            if ((thresholdCheck.checkBatchSize(buffer.getEventCount()) || thresholdCheck.checkLogSendInterval(getStopWatchTime())
+                    || thresholdCheck.checkMaxRequestSize(buffer.getBufferSize() + logLength)) && (buffer.getEventCount() != 0)) {
                 LOG.info("Attempting to push logs!");
                 pushLogs();
                 stopAndResetStopWatch();
@@ -119,7 +125,7 @@ public class CwlClient {
             logEventList.add(tempLogEvent);
         }
 
-        while (failedPost && (requestFailCount.count() < retryCount)) {
+        while (failedPost && (failCounter < retryCount)) {
             try {
                 PutLogEventsRequest putLogEventsRequest = PutLogEventsRequest.builder()
                         .logEvents(logEventList)
@@ -166,7 +172,7 @@ public class CwlClient {
 
         if (failedPost) {
             LOG.error("Error, timed out trying to push logs!");
-            throw new RuntimeException("Error, timed out trying to push logs! (Max retry_count reached)");
+            throw new RetransmissionLimitException("Error, timed out trying to push logs! (Max retry_count reached)");
         } else {
             failCounter = 0;
         }
