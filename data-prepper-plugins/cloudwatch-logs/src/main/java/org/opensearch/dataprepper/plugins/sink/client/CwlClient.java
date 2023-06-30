@@ -87,6 +87,8 @@ public class CwlClient {
             String logJsonString = singleLog.getData().toJsonString();
             int logLength = logJsonString.length();
 
+            bufferedEventHandles.add(singleLog.getData().getEventHandle());
+
             if (!stopWatchOn) {
                 startStopWatch();
             }
@@ -176,6 +178,14 @@ public class CwlClient {
         } else {
             failCounter = 0;
         }
+    }
+
+    private void releaseEventHandles(final boolean result) {
+        for (EventHandle eventHandle : bufferedEventHandles) {
+            eventHandle.release(result);
+        }
+
+        bufferedEventHandles.clear();
     }
 
     /**
