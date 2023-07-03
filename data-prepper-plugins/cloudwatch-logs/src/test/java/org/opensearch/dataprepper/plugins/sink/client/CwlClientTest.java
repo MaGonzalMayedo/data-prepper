@@ -90,10 +90,10 @@ public class CwlClientTest {
         when(awsConfig.getAwsStsHeaderOverrides()).thenReturn(stsHeaderOverrides);
         when(awsConfig.getAwsStsExternalId()).thenReturn(externalId);
 
-        when(pluginMetrics.counter(CwlClient.NUMBER_OF_RECORDS_PUSHED_TO_CWL_SUCCESS)).thenReturn(successEventCounter);
-        when(pluginMetrics.counter(CwlClient.REQUESTS_SUCCEEDED)).thenReturn(requestSuccessCounter);
-        when(pluginMetrics.counter(CwlClient.NUMBER_OF_RECORDS_PUSHED_TO_CWL_FAIL)).thenReturn(failedEventCounter);
-        when(pluginMetrics.counter(CwlClient.REQUESTS_FAILED)).thenReturn(requestFailCounter);
+        lenient().when(pluginMetrics.counter(CwlClient.NUMBER_OF_RECORDS_PUSHED_TO_CWL_SUCCESS)).thenReturn(successEventCounter);
+        lenient().when(pluginMetrics.counter(CwlClient.REQUESTS_SUCCEEDED)).thenReturn(requestSuccessCounter);
+        lenient().when(pluginMetrics.counter(CwlClient.NUMBER_OF_RECORDS_PUSHED_TO_CWL_FAIL)).thenReturn(failedEventCounter);
+        lenient().when(pluginMetrics.counter(CwlClient.REQUESTS_FAILED)).thenReturn(requestFailCounter);
     }
 
     CwlClient getCwlClientWithMemoryBuffer() {
@@ -146,6 +146,6 @@ public class CwlClientTest {
 
         cwlClient.output(getSampleRecords());
 
-        verify(successEventCounter).increment(anyInt());
+        verify(successEventCounter, atLeastOnce()).increment(any());
     }
 }

@@ -25,6 +25,11 @@ public class ThresholdCheck {
         this.logSendInterval = logSendInterval;
     }
 
+    public boolean isThresholdReached(long currentTime, int currentRequestSize, int batchSize) {
+        return ((checkBatchSize(batchSize) || checkLogSendInterval(currentTime)
+                || checkMaxRequestSize(currentRequestSize)) && (batchSize != 0));
+    }
+
     /**
      * Checks if the interval passed in is equal to or greater
      * than the threshold interval for sending PutLogEvents.

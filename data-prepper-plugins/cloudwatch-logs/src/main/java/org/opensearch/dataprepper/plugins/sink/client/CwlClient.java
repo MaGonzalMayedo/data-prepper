@@ -22,8 +22,9 @@ import software.amazon.awssdk.services.cloudwatchlogs.model.RejectedLogEventsInf
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 //TODO: Need to add e2e testing here to test this the range of the acquired events by CWL.
 
@@ -43,7 +44,7 @@ public class CwlClient {
     private final CloudWatchLogsClient cloudWatchLogsClient;
     private final Buffer buffer;
     private final ThresholdCheck thresholdCheck;
-    private final Collection<EventHandle> bufferedEventHandles;
+    private final List<EventHandle> bufferedEventHandles;
     private final String logGroup;
     private final String logStream;
     private final int retryCount;
@@ -56,6 +57,8 @@ public class CwlClient {
     private final StopWatch stopWatch;
     private boolean stopWatchOn;
 
+    private ReentrantLock reentrantLock;
+
     CwlClient(final CloudWatchLogsClient cloudWatchLogsClient, final CwlSinkConfig cwlSinkConfig, final Buffer buffer,
               final PluginMetrics pluginMetrics, final ThresholdCheck thresholdCheck, final int retryCount) {
 
@@ -67,11 +70,13 @@ public class CwlClient {
 
         this.retryCount = retryCount;
 
-        this.bufferedEventHandles = new LinkedList<>();
+        this.bufferedEventHandles = new ArrayList<>();
         this.logEventSuccessCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_PUSHED_TO_CWL_SUCCESS);
         this.requestFailCount = pluginMetrics.counter(REQUESTS_FAILED);
         this.logEventFailCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_PUSHED_TO_CWL_FAIL);
         this.requestSuccessCount = pluginMetrics.counter(REQUESTS_SUCCEEDED);
+
+        reentrantLock = new ReentrantLock();
 
         stopWatch = StopWatch.create();
         stopWatchOn = false;
@@ -83,11 +88,11 @@ public class CwlClient {
      * @param logs - Collection of Record events which hold log data.
      */
     public void output(final Collection<Record<Event>> logs) {
+        reentrantLock.lock();
+
         for (Record<Event> singleLog: logs) {
             String logJsonString = singleLog.getData().toJsonString();
             int logLength = logJsonString.length();
-
-            bufferedEventHandles.add(singleLog.getData().getEventHandle());
 
             if (!stopWatchOn) {
                 startStopWatch();
@@ -98,23 +103,32 @@ public class CwlClient {
                 continue;
             }
 
+            //Testing Vars, remove after debugging:
             boolean testBatchCond = thresholdCheck.checkBatchSize(buffer.getEventCount());
             boolean testLogSendInterval = thresholdCheck.checkLogSendInterval(getStopWatchTime());
             boolean testMaxRequestSize = thresholdCheck.checkMaxRequestSize(buffer.getBufferSize() + logLength);
             long stopWatchTime = getStopWatchTime();
 
             //Conditions for pushingLogs to CWL services:
-            if ((thresholdCheck.checkBatchSize(buffer.getEventCount()) || thresholdCheck.checkLogSendInterval(getStopWatchTime())
-                    || thresholdCheck.checkMaxRequestSize(buffer.getBufferSize() + logLength)) && (buffer.getEventCount() != 0)) {
+            if (thresholdCheck.isThresholdReached(getStopWatchTime(), buffer.getBufferSize() + logLength, buffer.getEventCount())) {
                 LOG.info("Attempting to push logs!");
                 pushLogs();
                 stopAndResetStopWatch();
             }
 
+            bufferedEventHandles.add(singleLog.getData().getEventHandle());
             buffer.writeEvent(logJsonString.getBytes());
         }
+
+        //TODO: Once we are done iterating, we can wait until the specified time threshold to emtpy the buffer if we have any leftover data.
+        //TODO: This will prevent any data from just hanging if a call to output is not done.
+        reentrantLock.unlock();
     }
 
+    /**
+     * pushLogs handles the building of PutLogEvents around a given collection of buffered events.
+     * It implements a simple exponential back off time sequence.
+     */
     private void pushLogs() {
         ArrayList<InputLogEvent> logEventList = new ArrayList<>();
         failedPost = true;
@@ -140,21 +154,20 @@ public class CwlClient {
 
                 if (rejectedLogEventsInfo == null) {
                     requestSuccessCount.increment();
-                    logEventSuccessCounter.increment(logEventList.size());
                     failedPost = false;
                     continue;
                 }
 
-                LOG.warn("Some logs were rejected!");
-                LOG.warn("Too new log event start index: " + rejectedLogEventsInfo.tooNewLogEventStartIndex());
-                LOG.warn("Too old log  event end index: " + rejectedLogEventsInfo.tooOldLogEventEndIndex());
-                LOG.warn("Expired log event end index: " + rejectedLogEventsInfo.expiredLogEventEndIndex());
+                printRejectedLogSummary(rejectedLogEventsInfo);
 
                 /*
-                    TODO: Need to implement releaseHandle function where we release handles of events that were rejected by CWL service.
+                    TODO: When a log is rejected by the service, we cannot send it, can probably push to a DLQ here.
                  */
 
+                changeHandleStateRange(rejectedLogEventsInfo.tooNewLogEventStartIndex(), bufferedEventHandles.size(), false);
+                changeHandleStateRange(0, Math.max(rejectedLogEventsInfo.tooOldLogEventEndIndex(), rejectedLogEventsInfo.expiredLogEventEndIndex()), false);
                 logEventSuccessCounter.increment(Math.max(rejectedLogEventsInfo.tooNewLogEventStartIndex() - Math.max(rejectedLogEventsInfo.tooOldLogEventEndIndex(), rejectedLogEventsInfo.expiredLogEventEndIndex()) - 1, 0));
+                bufferedEventHandles.clear();
                 failedPost = false;
             } catch (AwsServiceException | RetryableException e) {
                 LOG.error("Failed to push logs with error: {}", e.getMessage());
@@ -166,16 +179,19 @@ public class CwlClient {
                 }
 
                 LOG.warn("Trying to retransmit request...");
-                logEventFailCounter.increment(logEventList.size());
                 requestFailCount.increment();
                 failCounter += 1;
             }
         }
 
         if (failedPost) {
+            logEventFailCounter.increment(logEventList.size());
+            releaseEventHandles(false);
             LOG.error("Error, timed out trying to push logs!");
             throw new RetransmissionLimitException("Error, timed out trying to push logs! (Max retry_count reached)");
         } else {
+            logEventSuccessCounter.increment(logEventList.size());
+            releaseEventHandles(true);
             failCounter = 0;
         }
     }
@@ -189,12 +205,35 @@ public class CwlClient {
     }
 
     /**
+     * Changes the state of the specified range of event handles.
+     * Not end inclusive.
+     * @param startIndex - int denoting the starting index (inclusive)
+     * @param endIndex - int denoting the endibng index (non-inclusive)
+     */
+    private void changeHandleStateRange(final int startIndex, final int endIndex, final boolean state) {
+        for (int i = startIndex; i < endIndex; i++) {
+            bufferedEventHandles.get(i).release(state);
+        }
+    }
+
+    private void clearEventHandles() {
+        bufferedEventHandles.clear();
+    }
+
+    /**
      * Backoff function that calculates the exponential back off time
-     * based on the current attempt count.
+     * based on the current attempt count multiplied by 500 milliseconds.
      * @return long - The backoff time that represents the new wait time between retries.
      */
     private long calculateBackOffTime() {
         return ((long) Math.pow(2, failCounter)) * 500;
+    }
+
+    private void printRejectedLogSummary(RejectedLogEventsInfo rejectedLogEventsInfo) {
+        LOG.warn("Some logs were rejected!");
+        LOG.warn("Too new log event start index: " + rejectedLogEventsInfo.tooNewLogEventStartIndex());
+        LOG.warn("Too old log  event end index: " + rejectedLogEventsInfo.tooOldLogEventEndIndex());
+        LOG.warn("Expired log event end index: " + rejectedLogEventsInfo.expiredLogEventEndIndex());
     }
 
     public void shutdown() {
