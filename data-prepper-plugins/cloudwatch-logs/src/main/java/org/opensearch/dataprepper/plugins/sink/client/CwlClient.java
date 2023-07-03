@@ -90,13 +90,10 @@ public class CwlClient {
     public void output(final Collection<Record<Event>> logs) {
         reentrantLock.lock();
 
+        startStopWatch();
         for (Record<Event> singleLog: logs) {
             String logJsonString = singleLog.getData().toJsonString();
             int logLength = logJsonString.length();
-
-            if (!stopWatchOn) {
-                startStopWatch();
-            }
 
             if (thresholdCheck.checkMaxEventSize(logLength)) {
                 LOG.warn("Event blocked due to Max Size restriction!");
@@ -114,14 +111,14 @@ public class CwlClient {
                 LOG.info("Attempting to push logs!");
                 pushLogs();
                 stopAndResetStopWatch();
+                startStopWatch();
             }
 
             bufferedEventHandles.add(singleLog.getData().getEventHandle());
             buffer.writeEvent(logJsonString.getBytes());
         }
 
-        //TODO: Once we are done iterating, we can wait until the specified time threshold to emtpy the buffer if we have any leftover data.
-        //TODO: This will prevent any data from just hanging if a call to output is not done.
+        runExitCheck();
         reentrantLock.unlock();
     }
 
@@ -196,14 +193,6 @@ public class CwlClient {
         }
     }
 
-    private void releaseEventHandles(final boolean result) {
-        for (EventHandle eventHandle : bufferedEventHandles) {
-            eventHandle.release(result);
-        }
-
-        bufferedEventHandles.clear();
-    }
-
     /**
      * Changes the state of the specified range of event handles.
      * Not end inclusive.
@@ -216,10 +205,6 @@ public class CwlClient {
         }
     }
 
-    private void clearEventHandles() {
-        bufferedEventHandles.clear();
-    }
-
     /**
      * Backoff function that calculates the exponential back off time
      * based on the current attempt count multiplied by 500 milliseconds.
@@ -229,11 +214,31 @@ public class CwlClient {
         return ((long) Math.pow(2, failCounter)) * 500;
     }
 
+    private void runExitCheck() {
+        if (thresholdCheck.isThresholdReached(getStopWatchTime(), buffer.getBufferSize(), buffer.getEventCount())) {
+            LOG.info("Attempting to push logs!");
+            pushLogs();
+            stopAndResetStopWatch();
+        }
+    }
+
     private void printRejectedLogSummary(RejectedLogEventsInfo rejectedLogEventsInfo) {
         LOG.warn("Some logs were rejected!");
         LOG.warn("Too new log event start index: " + rejectedLogEventsInfo.tooNewLogEventStartIndex());
         LOG.warn("Too old log  event end index: " + rejectedLogEventsInfo.tooOldLogEventEndIndex());
         LOG.warn("Expired log event end index: " + rejectedLogEventsInfo.expiredLogEventEndIndex());
+    }
+
+    private void releaseEventHandles(final boolean result) {
+        for (EventHandle eventHandle : bufferedEventHandles) {
+            eventHandle.release(result);
+        }
+
+        bufferedEventHandles.clear();
+    }
+
+    private void clearEventHandles() {
+        bufferedEventHandles.clear();
     }
 
     public void shutdown() {

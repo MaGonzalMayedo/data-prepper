@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.sink.buffer.Buffer;
@@ -28,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -113,11 +115,17 @@ public class CwlClientTest {
         doThrow(AwsServiceException.class).when(mockClient).putLogEvents(any(PutLogEventsRequest.class));
     }
 
-    Collection<Record<Event>> getSampleRecords() {
-        ArrayList<Record<Event>> returnCollection = new ArrayList<>();
-        for (int i = 0; i < ThresholdConfig.DEFAULT_BATCH_SIZE; i++) {
-            returnCollection.add(new Record<>(JacksonEvent.fromMessage("testMessage")));
+    Collection<Record<Event>> getSampleRecords(int numberOfRecords) {
+        final ArrayList<Record<Event>> returnCollection = new ArrayList<>();
+        for (int i = 0; i < numberOfRecords; i++) {
+            JacksonEvent mockJacksonEvent = (JacksonEvent) JacksonEvent.fromMessage("testMessage");
+            final EventHandle mockEventHandle = mock(EventHandle.class);
+            mockJacksonEvent.setEventHandle(mockEventHandle);
+            returnCollection.add(new Record<>(mockJacksonEvent));
         }
+//        for (int i = 0; i < 10; i++) {
+//            returnCollection.add(new Record<>(JacksonEvent.fromMessage("testMessage")));
+//        }
         return returnCollection;
     }
 
@@ -132,20 +140,85 @@ public class CwlClientTest {
         CwlClient cwlClient = getCwlClientWithMemoryBuffer();
 
         try {
-            cwlClient.output(getSampleRecords());
+            cwlClient.output(getSampleRecords(ThresholdConfig.DEFAULT_BATCH_SIZE * 2));
         } catch (RetransmissionLimitException e) { //TODO: Create a dedicated RuntimeException for this.
             assertThat(e, notNullValue());
         }
     }
 
-    //Test needs to be fixed as it currently does not detect the counter.
     @Test
-    void successful_transmission_test() {
+    void check_failed_event_transmission_test() {
+        setMockClientThrowCWLException();
+        CwlClient cwlClient = getCwlClientWithMemoryBuffer();
+
+        try {
+            cwlClient.output(getSampleRecords(ThresholdConfig.DEFAULT_BATCH_SIZE));
+        } catch (RetransmissionLimitException e) {
+            verify(failedEventCounter).increment(ThresholdConfig.DEFAULT_BATCH_SIZE);
+        }
+    }
+
+    @Test
+    void check_successful_event_transmission_test() {
         setMockClientNoErrors();
         CwlClient cwlClient = getCwlClientWithMemoryBuffer();
 
-        cwlClient.output(getSampleRecords());
+        cwlClient.output(getSampleRecords(ThresholdConfig.DEFAULT_BATCH_SIZE * 2));
 
-        verify(successEventCounter, atLeastOnce()).increment(any());
+        verify(successEventCounter).increment(anyDouble());
+    }
+
+    @Test
+    void check_failed_event_test() {
+        setMockClientThrowCWLException();
+        CwlClient cwlClient = getCwlClientWithMemoryBuffer();
+
+        try {
+            cwlClient.output(getSampleRecords(ThresholdConfig.DEFAULT_BATCH_SIZE * 4));
+        } catch (RetransmissionLimitException e) {
+            verify(requestFailCounter, times(4)).increment();
+        }
+    }
+
+    @Test
+    void check_successful_event_test() {
+        setMockClientNoErrors();
+        CwlClient cwlClient = getCwlClientWithMemoryBuffer();
+
+        cwlClient.output(getSampleRecords(ThresholdConfig.DEFAULT_BATCH_SIZE * 4));
+
+        verify(requestSuccessCounter, times(4)).increment();
+    }
+
+    @Test
+    void check_event_handles_successfully_released_test() {
+        setMockClientNoErrors();
+        CwlClient cwlClient = getCwlClientWithMemoryBuffer();
+
+        final Collection<Record<Event>> sampleEvents = getSampleRecords(ThresholdConfig.DEFAULT_BATCH_SIZE * 2);
+        final Collection<EventHandle> sampleEventHandles = sampleEvents.stream().map(Record::getData).map(Event::getEventHandle).collect(Collectors.toList());
+
+        cwlClient.output(sampleEvents);
+
+        for (EventHandle sampleEventHandle: sampleEventHandles) {
+            verify(sampleEventHandle).release(true);
+        }
+    }
+
+    @Test
+    void check_event_handles_failed_released_test() {
+        setMockClientThrowCWLException();
+        CwlClient cwlClient = getCwlClientWithMemoryBuffer();
+
+        final Collection<Record<Event>> sampleEvents = getSampleRecords(ThresholdConfig.DEFAULT_BATCH_SIZE);
+        final Collection<EventHandle> sampleEventHandles = sampleEvents.stream().map(Record::getData).map(Event::getEventHandle).collect(Collectors.toList());
+
+        try {
+            cwlClient.output(sampleEvents);
+        } catch (RetransmissionLimitException e) {
+            for (EventHandle sampleEventHandle: sampleEventHandles) {
+                verify(sampleEventHandle).release(false);
+            }
+        }
     }
 }
