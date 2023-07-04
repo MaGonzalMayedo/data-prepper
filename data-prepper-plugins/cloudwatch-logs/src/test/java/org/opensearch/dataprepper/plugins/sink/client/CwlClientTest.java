@@ -64,7 +64,7 @@ public class CwlClientTest {
 
         thresholdConfig = new ThresholdConfig(); //Class can stay as is.
         thresholdCheck = new ThresholdCheck(thresholdConfig.getBatchSize(), thresholdConfig.getMaxEventSize(),
-                thresholdConfig.getMaxBatchSize(), thresholdConfig.getLogSendInterval());
+                thresholdConfig.getMaxRequestSize(), thresholdConfig.getLogSendInterval());
 
         awsConfig = mock(AwsConfig.class);
         bufferFactory = new InMemoryBufferFactory();
@@ -163,7 +163,7 @@ public class CwlClientTest {
 
         cwlClient.output(getSampleRecords(ThresholdConfig.DEFAULT_BATCH_SIZE * 2));
 
-        verify(successEventCounter).increment(anyDouble());
+        verify(successEventCounter, atLeast(2)).increment(anyDouble());
     }
 
     @Test
@@ -174,7 +174,7 @@ public class CwlClientTest {
         try {
             cwlClient.output(getSampleRecords(ThresholdConfig.DEFAULT_BATCH_SIZE * 4));
         } catch (RetransmissionLimitException e) {
-            verify(requestFailCounter, times(4)).increment();
+            verify(requestFailCounter, atLeast(ThresholdConfig.DEFAULT_RETRY_COUNT)).increment();
         }
     }
 

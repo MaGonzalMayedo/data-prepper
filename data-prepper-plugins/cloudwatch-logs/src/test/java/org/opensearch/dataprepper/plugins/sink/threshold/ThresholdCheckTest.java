@@ -35,7 +35,7 @@ public class ThresholdCheckTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {10, 30, 50})
+    @ValueSource(ints = {1, 3, 4})
     void check_log_send_interval_invalid(final int send_interval) {
         assertThat(thresholdCheck.checkLogSendInterval(send_interval), is(false));
     }

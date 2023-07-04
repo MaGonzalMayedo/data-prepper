@@ -216,11 +216,16 @@ public class CwlClient {
         return ((long) Math.pow(2, failCounter)) * backOffTimeBase;
     }
 
+    /**
+     * One last check to ensure that if we meet the requirements before exiting, we
+     * do one last PLE.
+     */
     private void runExitCheck() {
         if (thresholdCheck.isThresholdReached(getStopWatchTime(), buffer.getBufferSize(), buffer.getEventCount())) {
             LOG.info("Attempting to push logs!");
             pushLogs();
             stopAndResetStopWatch();
+            startStopWatch();
         }
     }
 

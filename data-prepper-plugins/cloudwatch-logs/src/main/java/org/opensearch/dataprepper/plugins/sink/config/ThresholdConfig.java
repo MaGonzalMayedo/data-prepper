@@ -65,7 +65,7 @@ public class ThresholdConfig {
         return logSendInterval;
     }
 
-    public long getBackOffTime() {
+    public int getBackOffTime() {
         return backOffTime;
     }
 }
