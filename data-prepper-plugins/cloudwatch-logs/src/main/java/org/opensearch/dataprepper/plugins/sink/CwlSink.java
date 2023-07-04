@@ -34,7 +34,6 @@ import java.util.Collection;
  */
 @DataPrepperPlugin(name = "cwl-sink", pluginType = Sink.class, pluginConfigurationType = CwlSinkConfig.class)
 public class CwlSink extends AbstractSink<Record<Event>> {
-    private static final Logger LOG = LoggerFactory.getLogger(CwlSink.class);
     private final AwsConfig awsConfig;
     private final CwlSinkConfig cwlSinkConfig;
     private final ThresholdConfig thresholdConfig;
