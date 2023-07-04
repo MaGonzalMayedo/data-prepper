@@ -100,7 +100,7 @@ public class CwlClientTest {
 
     CwlClient getCwlClientWithMemoryBuffer() {
         return new CwlClient(mockClient, cwlSinkConfig, buffer, pluginMetrics,
-                thresholdCheck, thresholdConfig.getRetryCount());
+                thresholdCheck, thresholdConfig.getRetryCount(), ThresholdConfig.DEFAULT_BACKOFF_TIME);
     }
 
     void setMockClientNoErrors() {

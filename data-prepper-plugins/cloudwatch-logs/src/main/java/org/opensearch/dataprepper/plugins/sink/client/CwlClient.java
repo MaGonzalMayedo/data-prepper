@@ -48,6 +48,7 @@ public class CwlClient {
     private final String logGroup;
     private final String logStream;
     private final int retryCount;
+    private final long backOffTimeBase;
     private final io.micrometer.core.instrument.Counter logEventSuccessCounter; //Counter to be used on the fly for counting successful transmissions. (Success per single event successfully published).
     private final Counter requestSuccessCount;
     private final io.micrometer.core.instrument.Counter logEventFailCounter;
@@ -60,7 +61,7 @@ public class CwlClient {
     private ReentrantLock reentrantLock;
 
     CwlClient(final CloudWatchLogsClient cloudWatchLogsClient, final CwlSinkConfig cwlSinkConfig, final Buffer buffer,
-              final PluginMetrics pluginMetrics, final ThresholdCheck thresholdCheck, final int retryCount) {
+              final PluginMetrics pluginMetrics, final ThresholdCheck thresholdCheck, final int retryCount, final long backOffTimeBase) {
 
         this.cloudWatchLogsClient = cloudWatchLogsClient;
         this.buffer = buffer;
@@ -69,6 +70,7 @@ public class CwlClient {
         this.thresholdCheck = thresholdCheck;
 
         this.retryCount = retryCount;
+        this.backOffTimeBase = backOffTimeBase;
 
         this.bufferedEventHandles = new ArrayList<>();
         this.logEventSuccessCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_PUSHED_TO_CWL_SUCCESS);
@@ -170,7 +172,7 @@ public class CwlClient {
                 LOG.error("Failed to push logs with error: {}", e.getMessage());
 
                 try {
-                    Thread.sleep(calculateBackOffTime());
+                    Thread.sleep(calculateBackOffTime(backOffTimeBase));
                 } catch (InterruptedException i) {
                     throw new RuntimeException(i.getMessage());
                 }
@@ -210,8 +212,8 @@ public class CwlClient {
      * based on the current attempt count multiplied by 500 milliseconds.
      * @return long - The backoff time that represents the new wait time between retries.
      */
-    private long calculateBackOffTime() {
-        return ((long) Math.pow(2, failCounter)) * 500;
+    private long calculateBackOffTime(long backOffTimeBase) {
+        return ((long) Math.pow(2, failCounter)) * backOffTimeBase;
     }
 
     private void runExitCheck() {
