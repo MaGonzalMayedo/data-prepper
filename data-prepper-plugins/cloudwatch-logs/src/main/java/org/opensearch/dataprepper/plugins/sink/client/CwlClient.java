@@ -60,8 +60,8 @@ public class CwlClient {
 
     private ReentrantLock reentrantLock;
 
-    CwlClient(final CloudWatchLogsClient cloudWatchLogsClient, final CwlSinkConfig cwlSinkConfig, final Buffer buffer,
-              final PluginMetrics pluginMetrics, final ThresholdCheck thresholdCheck, final int retryCount, final long backOffTimeBase) {
+    public CwlClient(final CloudWatchLogsClient cloudWatchLogsClient, final CwlSinkConfig cwlSinkConfig, final Buffer buffer,
+                     final PluginMetrics pluginMetrics, final ThresholdCheck thresholdCheck, final int retryCount, final long backOffTimeBase) {
 
         this.cloudWatchLogsClient = cloudWatchLogsClient;
         this.buffer = buffer;
