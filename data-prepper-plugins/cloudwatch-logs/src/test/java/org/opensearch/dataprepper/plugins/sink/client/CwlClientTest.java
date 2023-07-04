@@ -123,9 +123,7 @@ public class CwlClientTest {
             mockJacksonEvent.setEventHandle(mockEventHandle);
             returnCollection.add(new Record<>(mockJacksonEvent));
         }
-//        for (int i = 0; i < 10; i++) {
-//            returnCollection.add(new Record<>(JacksonEvent.fromMessage("testMessage")));
-//        }
+
         return returnCollection;
     }
 
