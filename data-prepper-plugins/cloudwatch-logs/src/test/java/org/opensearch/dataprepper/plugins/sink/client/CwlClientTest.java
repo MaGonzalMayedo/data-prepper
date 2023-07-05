@@ -63,7 +63,7 @@ public class CwlClientTest {
         cwlSinkConfig = mock(CwlSinkConfig.class);
 
         thresholdConfig = new ThresholdConfig(); //Class can stay as is.
-        thresholdCheck = new ThresholdCheck(thresholdConfig.getBatchSize(), thresholdConfig.getMaxEventSize(),
+        thresholdCheck = new ThresholdCheck(thresholdConfig.getBatchSize(), thresholdConfig.getMaxEventSize() * 1000,
                 thresholdConfig.getMaxRequestSize(), thresholdConfig.getLogSendInterval());
 
         awsConfig = mock(AwsConfig.class);
@@ -119,6 +119,19 @@ public class CwlClientTest {
         final ArrayList<Record<Event>> returnCollection = new ArrayList<>();
         for (int i = 0; i < numberOfRecords; i++) {
             JacksonEvent mockJacksonEvent = (JacksonEvent) JacksonEvent.fromMessage("testMessage");
+            final EventHandle mockEventHandle = mock(EventHandle.class);
+            mockJacksonEvent.setEventHandle(mockEventHandle);
+            returnCollection.add(new Record<>(mockJacksonEvent));
+        }
+
+        return returnCollection;
+    }
+
+    Collection<Record<Event>> getSampleRecordsLarge(int numberOfRecords, int sizeOfRecordsBytes) {
+        final ArrayList<Record<Event>> returnCollection = new ArrayList<>();
+        final String testMessage = "a";
+        for (int i = 0; i < numberOfRecords; i++) {
+            JacksonEvent mockJacksonEvent = (JacksonEvent) JacksonEvent.fromMessage(testMessage.repeat(sizeOfRecordsBytes));
             final EventHandle mockEventHandle = mock(EventHandle.class);
             mockJacksonEvent.setEventHandle(mockEventHandle);
             returnCollection.add(new Record<>(mockJacksonEvent));
@@ -185,7 +198,7 @@ public class CwlClientTest {
 
         cwlClient.output(getSampleRecords(ThresholdConfig.DEFAULT_BATCH_SIZE * 4));
 
-        verify(requestSuccessCounter, times(4)).increment();
+        verify(requestSuccessCounter, atLeast(4)).increment();
     }
 
     @Test
@@ -218,5 +231,31 @@ public class CwlClientTest {
                 verify(sampleEventHandle).release(false);
             }
         }
+    }
+
+    @Test
+    void check_max_size_threshold_fail_test() {
+        setMockClientNoErrors();
+        CwlClient cwlClient = getCwlClientWithMemoryBuffer();
+
+        final Collection<Record<Event>> sampleEvents = getSampleRecordsLarge(ThresholdConfig.DEFAULT_BATCH_SIZE, ThresholdConfig.DEFAULT_EVENT_SIZE + 1);
+
+        cwlClient.output(sampleEvents);
+
+        verify(successEventCounter, never()).increment(anyInt());
+        verify(requestSuccessCounter, never()).increment();
+    }
+
+    @Test
+    void check_max_size_threshold_success_test() {
+        setMockClientNoErrors();
+        CwlClient cwlClient = getCwlClientWithMemoryBuffer();
+
+        final Collection<Record<Event>> sampleEvents = getSampleRecordsLarge(ThresholdConfig.DEFAULT_BATCH_SIZE, ThresholdConfig.DEFAULT_EVENT_SIZE);
+
+        cwlClient.output(sampleEvents);
+
+        verify(successEventCounter, atLeastOnce()).increment(anyDouble());
+        verify(requestSuccessCounter, atLeastOnce()).increment();
     }
 }

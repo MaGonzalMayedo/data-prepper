@@ -85,7 +85,7 @@ public class CwlClient {
     }
 
     /**
-     * Function handles the packaging of events into log events before sending a bulk request to CWL.
+     * Function handles the packaging of events into log events before sending a bulk request to CloudWatchLogs.
      * Implements simple batch limit buffer. (Sends once batch size is reached)
      * @param logs - Collection of Record events which hold log data.
      */

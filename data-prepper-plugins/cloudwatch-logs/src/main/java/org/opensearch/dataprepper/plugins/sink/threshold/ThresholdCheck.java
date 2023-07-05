@@ -5,8 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.sink.threshold;
 
-import org.opensearch.dataprepper.plugins.sink.buffer.Buffer;
-
 /**
  * ThresholdCheck receives paramaters for which to reference the
  * limits of a buffer and CloudWatchLogsClient before making a
@@ -14,14 +12,14 @@ import org.opensearch.dataprepper.plugins.sink.buffer.Buffer;
  */
 public class ThresholdCheck {
     private final int batchSize;
-    private final int maxEventSize;
-    private final int maxRequestSize;
+    private final int maxEventSizeBytes;
+    private final int maxRequestSizeBytes;
     private final long logSendInterval;
 
-    public ThresholdCheck(int batchSize, int maxEventSize, int maxRequestSize, int logSendInterval) {
+    public ThresholdCheck(int batchSize, int maxEventSizeBytes, int maxRequestSizeBytes, int logSendInterval) {
         this.batchSize = batchSize;
-        this.maxEventSize = maxEventSize;
-        this.maxRequestSize = maxRequestSize;
+        this.maxEventSizeBytes = maxEventSizeBytes;
+        this.maxRequestSizeBytes = maxRequestSizeBytes;
         this.logSendInterval = logSendInterval;
     }
 
@@ -33,11 +31,11 @@ public class ThresholdCheck {
     /**
      * Checks if the interval passed in is equal to or greater
      * than the threshold interval for sending PutLogEvents.
-     * @param currentTime int
+     * @param currentTimeSeconds int denoting seconds.
      * @return boolean - true if greater than or equal to logInterval, false otherwise.
      */
-    public boolean checkLogSendInterval(long currentTime) {
-        return currentTime >= logSendInterval;
+    public boolean checkLogSendInterval(long currentTimeSeconds) {
+        return currentTimeSeconds >= logSendInterval;
     }
 
     /**
@@ -46,7 +44,7 @@ public class ThresholdCheck {
      * @return boolean - true if greater than MaxEventSize, false otherwise.
      */
     public boolean checkMaxEventSize(int eventSize) {
-        return eventSize > maxEventSize;
+        return eventSize > maxEventSizeBytes;
     }
 
     /**
@@ -55,7 +53,7 @@ public class ThresholdCheck {
      * @return boolean - true if greater than or equal to the Max request size, smaller otherwise.
      */
     public boolean checkMaxRequestSize(int currentRequestSize) {
-        return currentRequestSize >= maxRequestSize;
+        return currentRequestSize >= maxRequestSizeBytes;
     }
 
     /**

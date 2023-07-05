@@ -18,8 +18,6 @@ import org.opensearch.dataprepper.plugins.sink.config.AwsConfig;
 import org.opensearch.dataprepper.plugins.sink.config.CwlSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.config.ThresholdConfig;
 import org.opensearch.dataprepper.plugins.sink.threshold.ThresholdCheck;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 
 import java.util.Collection;
@@ -65,7 +63,9 @@ public class CwlSink extends AbstractSink<Record<Event>> {
 
         buffer = bufferFactory.getBuffer();
         cloudWatchLogsClient = CwlClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier);
-        thresholdCheck = new ThresholdCheck(thresholdConfig.getBatchSize(), thresholdConfig.getMaxEventSize(),
+
+        //Applies the conversion to kilobytes:
+        thresholdCheck = new ThresholdCheck(thresholdConfig.getBatchSize(), thresholdConfig.getMaxEventSize() * 1000,
                 thresholdConfig.getMaxRequestSize(),thresholdConfig.getLogSendInterval());
     }
 

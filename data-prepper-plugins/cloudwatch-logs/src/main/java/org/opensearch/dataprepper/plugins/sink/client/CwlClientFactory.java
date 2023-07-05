@@ -9,7 +9,6 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.sink.config.AwsConfig;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
@@ -36,18 +35,6 @@ public final class CwlClientFactory {
                 .overrideConfiguration(createOverrideConfiguration(awsConfig)).build();
     }
 
-    /**
-     * Generates a CloudWatchLogs Client based on default system credentials.
-     * @return CloudWatchLogsClient -> used to interact with CloudWatch Logs services.
-     * TODO: Might not be needed, remove if this is the case.
-     */
-    public static CloudWatchLogsClient createCwlClient() {
-        return CloudWatchLogsClient.builder()
-                .credentialsProvider(ProfileCredentialsProvider.create())
-                .build();
-    }
-
-    //TODO: Change this method call "getDefault" once rebased with main."
     private static ClientOverrideConfiguration createOverrideConfiguration(final AwsConfig awsConfig) {
         final RetryPolicy retryPolicy = RetryPolicy.builder().numRetries(AwsConfig.DEFAULT_CONNECTION_ATTEMPTS).build();
 
