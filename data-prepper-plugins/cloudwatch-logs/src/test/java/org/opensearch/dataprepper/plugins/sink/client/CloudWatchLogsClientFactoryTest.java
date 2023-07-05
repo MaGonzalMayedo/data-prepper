@@ -7,12 +7,9 @@ package org.opensearch.dataprepper.plugins.sink.client;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
-import org.mockito.Mock;
 import org.mockito.MockedStatic;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.sink.config.AwsConfig;
@@ -29,7 +26,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.mockito.Mockito.*;
 
-public class CwlClientFactoryTest {
+public class CloudWatchLogsClientFactoryTest {
     private AwsConfig awsConfig;
     private AwsCredentialsSupplier awsCredentialsSupplier;
     private AwsCredentialsOptions awsCredentialsOptions;
@@ -44,14 +41,14 @@ public class CwlClientFactoryTest {
 
     @Test
     void check_created_real_default_client_test() {
-        final CloudWatchLogsClient cloudWatchLogsClientToTest = CwlClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier);
+        final CloudWatchLogsClient cloudWatchLogsClientToTest = CloudWatchLogsClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier);
 
         assertThat(cloudWatchLogsClientToTest, notNullValue());
     }
 
     @Test
     void check_created_client_with_no_params() {
-        final CloudWatchLogsClient cloudWatchLogsClient = CwlClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier);
+        final CloudWatchLogsClient cloudWatchLogsClient = CloudWatchLogsClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier);
 
         assertThat(cloudWatchLogsClient, notNullValue());
     }
@@ -75,7 +72,7 @@ public class CwlClientFactoryTest {
         try(final MockedStatic<CloudWatchLogsClient> cloudWatchLogsClientMockedStatic = mockStatic(CloudWatchLogsClient.class)) {
             cloudWatchLogsClientMockedStatic.when(CloudWatchLogsClient::builder)
                     .thenReturn(cloudWatchLogsClientBuilder);
-            CwlClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier);
+            CloudWatchLogsClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier);
         }
 
         final ArgumentCaptor<AwsCredentialsProvider> credentialsProviderArgumentCaptor = ArgumentCaptor.forClass(AwsCredentialsProvider.class);

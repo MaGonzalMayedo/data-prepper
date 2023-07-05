@@ -12,10 +12,10 @@ import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.plugins.sink.buffer.Buffer;
 import org.opensearch.dataprepper.plugins.sink.buffer.BufferFactory;
 import org.opensearch.dataprepper.plugins.sink.buffer.InMemoryBufferFactory;
-import org.opensearch.dataprepper.plugins.sink.client.CwlClient;
-import org.opensearch.dataprepper.plugins.sink.client.CwlClientFactory;
+import org.opensearch.dataprepper.plugins.sink.client.CloudWatchLogsService;
+import org.opensearch.dataprepper.plugins.sink.client.CloudWatchLogsClientFactory;
 import org.opensearch.dataprepper.plugins.sink.config.AwsConfig;
-import org.opensearch.dataprepper.plugins.sink.config.CwlSinkConfig;
+import org.opensearch.dataprepper.plugins.sink.config.CloudWatchLogsSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.config.ThresholdConfig;
 import org.opensearch.dataprepper.plugins.sink.threshold.ThresholdCheck;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
@@ -30,10 +30,10 @@ import java.util.Collection;
  * The CwlSink class is in charge of staging log events before pushing them
  * to AWS CloudWatchLogs Services.
  */
-@DataPrepperPlugin(name = "cwl-sink", pluginType = Sink.class, pluginConfigurationType = CwlSinkConfig.class)
-public class CwlSink extends AbstractSink<Record<Event>> {
+@DataPrepperPlugin(name = "cwl-sink", pluginType = Sink.class, pluginConfigurationType = CloudWatchLogsSinkConfig.class)
+public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
     private final AwsConfig awsConfig;
-    private final CwlSinkConfig cwlSinkConfig;
+    private final CloudWatchLogsSinkConfig cloudWatchLogsSinkConfig;
     private final ThresholdConfig thresholdConfig;
     private final PluginMetrics pluginMetrics;
     private final AwsCredentialsSupplier awsCredentialsSupplier;
@@ -41,28 +41,28 @@ public class CwlSink extends AbstractSink<Record<Event>> {
     private BufferFactory bufferFactory;
     private Buffer buffer;
     private ThresholdCheck thresholdCheck;
-    private CwlClient cwlClient;
+    private CloudWatchLogsService cloudWatchLogsService;
     private boolean isStopRequested;
     private boolean isInitialized;
     @DataPrepperPluginConstructor
-    public CwlSink(final PluginSetting pluginSetting,
-                   final PluginMetrics pluginMetrics,
-                   final CwlSinkConfig cwlSinkConfig,
-                   final AwsCredentialsSupplier awsCredentialsSupplier) {
+    public CloudWatchLogsSink(final PluginSetting pluginSetting,
+                              final PluginMetrics pluginMetrics,
+                              final CloudWatchLogsSinkConfig cloudWatchLogsSinkConfig,
+                              final AwsCredentialsSupplier awsCredentialsSupplier) {
         super(pluginSetting);
 
         this.pluginMetrics = pluginMetrics;
-        this.cwlSinkConfig = cwlSinkConfig;
-        this.awsConfig = cwlSinkConfig.getAwsConfig();
-        this.thresholdConfig = cwlSinkConfig.getThresholdConfig();
+        this.cloudWatchLogsSinkConfig = cloudWatchLogsSinkConfig;
+        this.awsConfig = cloudWatchLogsSinkConfig.getAwsConfig();
+        this.thresholdConfig = cloudWatchLogsSinkConfig.getThresholdConfig();
         this.awsCredentialsSupplier = awsCredentialsSupplier;
 
-        if (cwlSinkConfig.getBufferType().equals("in_memory")) {
+        if (cloudWatchLogsSinkConfig.getBufferType().equals("in_memory")) {
             bufferFactory = new InMemoryBufferFactory();
         }
 
         buffer = bufferFactory.getBuffer();
-        cloudWatchLogsClient = CwlClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier);
+        cloudWatchLogsClient = CloudWatchLogsClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier);
 
         //Applies the conversion to kilobytes:
         thresholdCheck = new ThresholdCheck(thresholdConfig.getBatchSize(), thresholdConfig.getMaxEventSize() * 1000,
@@ -71,7 +71,7 @@ public class CwlSink extends AbstractSink<Record<Event>> {
 
     @Override
     public void doInitialize() {
-        cwlClient = new CwlClient(cloudWatchLogsClient, cwlSinkConfig, buffer,
+        cloudWatchLogsService = new CloudWatchLogsService(cloudWatchLogsClient, cloudWatchLogsSinkConfig, buffer,
                 pluginMetrics, thresholdCheck, thresholdConfig.getRetryCount(), thresholdConfig.getBackOffTime());
         isInitialized = true;
     }
@@ -82,7 +82,7 @@ public class CwlSink extends AbstractSink<Record<Event>> {
             return;
         }
 
-        cwlClient.output(records);
+        cloudWatchLogsService.output(records);
     }
 
     @Override

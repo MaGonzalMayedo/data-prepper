@@ -7,7 +7,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.sink.buffer.Buffer;
-import org.opensearch.dataprepper.plugins.sink.config.CwlSinkConfig;
+import org.opensearch.dataprepper.plugins.sink.config.CloudWatchLogsSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.exception.RetransmissionLimitException;
 import org.opensearch.dataprepper.plugins.sink.threshold.ThresholdCheck;
 import org.slf4j.Logger;
@@ -35,12 +35,12 @@ import java.util.concurrent.locks.ReentrantLock;
 //TODO: Must also consider if the customer makes the logEvent size bigger than the send request size.
 //TODO: Can inject another class for the stopWatch functionality.
 
-public class CwlClient {
+public class CloudWatchLogsService {
     public static final String NUMBER_OF_RECORDS_PUSHED_TO_CWL_SUCCESS = "cloudWatchLogsEventsSucceeded";
     public static final String NUMBER_OF_RECORDS_PUSHED_TO_CWL_FAIL = "cloudWatchLogsEventsFailed";
     public static final String REQUESTS_SUCCEEDED = "cloudWatchLogsRequestsSucceeded";
     public static final String REQUESTS_FAILED = "cloudWatchLogsRequestsFailed";
-    private static final Logger LOG = LoggerFactory.getLogger(CwlClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(CloudWatchLogsService.class);
     private final CloudWatchLogsClient cloudWatchLogsClient;
     private final Buffer buffer;
     private final ThresholdCheck thresholdCheck;
@@ -60,13 +60,13 @@ public class CwlClient {
 
     private ReentrantLock reentrantLock;
 
-    public CwlClient(final CloudWatchLogsClient cloudWatchLogsClient, final CwlSinkConfig cwlSinkConfig, final Buffer buffer,
-                     final PluginMetrics pluginMetrics, final ThresholdCheck thresholdCheck, final int retryCount, final long backOffTimeBase) {
+    public CloudWatchLogsService(final CloudWatchLogsClient cloudWatchLogsClient, final CloudWatchLogsSinkConfig cloudWatchLogsSinkConfig, final Buffer buffer,
+                                 final PluginMetrics pluginMetrics, final ThresholdCheck thresholdCheck, final int retryCount, final long backOffTimeBase) {
 
         this.cloudWatchLogsClient = cloudWatchLogsClient;
         this.buffer = buffer;
-        this.logGroup = cwlSinkConfig.getLogGroup();
-        this.logStream = cwlSinkConfig.getLogStream();
+        this.logGroup = cloudWatchLogsSinkConfig.getLogGroup();
+        this.logStream = cloudWatchLogsSinkConfig.getLogStream();
         this.thresholdCheck = thresholdCheck;
 
         this.retryCount = retryCount;

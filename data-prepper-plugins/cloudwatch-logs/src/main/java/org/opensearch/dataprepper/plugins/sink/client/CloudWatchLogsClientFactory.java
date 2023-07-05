@@ -19,7 +19,7 @@ import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
  * client for interfacing with
  * CloudWatchLogs services.
  */
-public final class CwlClientFactory {
+public final class CloudWatchLogsClientFactory {
 
     /**
      * Generates a CloudWatchLogs Client based on STS role ARN system credentials.

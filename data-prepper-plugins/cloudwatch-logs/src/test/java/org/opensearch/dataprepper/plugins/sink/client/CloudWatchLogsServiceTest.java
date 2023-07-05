@@ -11,17 +11,15 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.sink.buffer.Buffer;
 import org.opensearch.dataprepper.plugins.sink.buffer.BufferFactory;
-import org.opensearch.dataprepper.plugins.sink.buffer.InMemoryBuffer;
 import org.opensearch.dataprepper.plugins.sink.buffer.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.sink.config.AwsConfig;
-import org.opensearch.dataprepper.plugins.sink.config.CwlSinkConfig;
+import org.opensearch.dataprepper.plugins.sink.config.CloudWatchLogsSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.config.ThresholdConfig;
 import org.opensearch.dataprepper.plugins.sink.exception.RetransmissionLimitException;
 import org.opensearch.dataprepper.plugins.sink.threshold.ThresholdCheck;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
-import software.amazon.awssdk.services.cloudwatchlogs.model.CloudWatchLogsException;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsResponse;
 
@@ -34,16 +32,15 @@ import java.util.stream.Collectors;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 //TODO: Add Codec session.
 //TODO: Finish adding feature for ARN reading.
 
-public class CwlClientTest {
+public class CloudWatchLogsServiceTest {
     private CloudWatchLogsClient mockClient;
     private PutLogEventsResponse putLogEventsResponse;
-    private CwlSinkConfig cwlSinkConfig;
+    private CloudWatchLogsSinkConfig cloudWatchLogsSinkConfig;
     private ThresholdConfig thresholdConfig;
     private ThresholdCheck thresholdCheck;
     private AwsConfig awsConfig;
@@ -60,7 +57,7 @@ public class CwlClientTest {
 
     @BeforeEach
     void setUp() {
-        cwlSinkConfig = mock(CwlSinkConfig.class);
+        cloudWatchLogsSinkConfig = mock(CloudWatchLogsSinkConfig.class);
 
         thresholdConfig = new ThresholdConfig(); //Class can stay as is.
         thresholdCheck = new ThresholdCheck(thresholdConfig.getBatchSize(), thresholdConfig.getMaxEventSize() * 1000,
@@ -81,29 +78,29 @@ public class CwlClientTest {
         final String externalId = UUID.randomUUID().toString();
         final Map<String, String> stsHeaderOverrides = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
 
-        when(cwlSinkConfig.getLogGroup()).thenReturn(TEST_LOG_GROUP);
-        when(cwlSinkConfig.getLogStream()).thenReturn(TEST_LOG_STREAM);
-        when(cwlSinkConfig.getBufferType()).thenReturn("in_memory");
-        when(cwlSinkConfig.getAwsConfig()).thenReturn(awsConfig);
-        when(cwlSinkConfig.getThresholdConfig()).thenReturn(thresholdConfig);
+        when(cloudWatchLogsSinkConfig.getLogGroup()).thenReturn(TEST_LOG_GROUP);
+        when(cloudWatchLogsSinkConfig.getLogStream()).thenReturn(TEST_LOG_STREAM);
+        when(cloudWatchLogsSinkConfig.getBufferType()).thenReturn("in_memory");
+        when(cloudWatchLogsSinkConfig.getAwsConfig()).thenReturn(awsConfig);
+        when(cloudWatchLogsSinkConfig.getThresholdConfig()).thenReturn(thresholdConfig);
 
         when(awsConfig.getAwsRegion()).thenReturn(Region.US_EAST_1);
         when(awsConfig.getAwsStsRoleArn()).thenReturn(stsRoleArn);
         when(awsConfig.getAwsStsHeaderOverrides()).thenReturn(stsHeaderOverrides);
         when(awsConfig.getAwsStsExternalId()).thenReturn(externalId);
 
-        lenient().when(pluginMetrics.counter(CwlClient.NUMBER_OF_RECORDS_PUSHED_TO_CWL_SUCCESS)).thenReturn(successEventCounter);
-        lenient().when(pluginMetrics.counter(CwlClient.REQUESTS_SUCCEEDED)).thenReturn(requestSuccessCounter);
-        lenient().when(pluginMetrics.counter(CwlClient.NUMBER_OF_RECORDS_PUSHED_TO_CWL_FAIL)).thenReturn(failedEventCounter);
-        lenient().when(pluginMetrics.counter(CwlClient.REQUESTS_FAILED)).thenReturn(requestFailCounter);
+        lenient().when(pluginMetrics.counter(CloudWatchLogsService.NUMBER_OF_RECORDS_PUSHED_TO_CWL_SUCCESS)).thenReturn(successEventCounter);
+        lenient().when(pluginMetrics.counter(CloudWatchLogsService.REQUESTS_SUCCEEDED)).thenReturn(requestSuccessCounter);
+        lenient().when(pluginMetrics.counter(CloudWatchLogsService.NUMBER_OF_RECORDS_PUSHED_TO_CWL_FAIL)).thenReturn(failedEventCounter);
+        lenient().when(pluginMetrics.counter(CloudWatchLogsService.REQUESTS_FAILED)).thenReturn(requestFailCounter);
     }
 
     void setThresholdForTestingRequestSize() {
         thresholdCheck = new ThresholdCheck(10000, ThresholdConfig.DEFAULT_SIZE_OF_REQUEST, ThresholdConfig.DEFAULT_SIZE_OF_REQUEST, ThresholdConfig.DEFAULT_LOG_SEND_INTERVAL_TIME);
     }
 
-    CwlClient getCwlClientWithMemoryBuffer() {
-        return new CwlClient(mockClient, cwlSinkConfig, buffer, pluginMetrics,
+    CloudWatchLogsService getCwlClientWithMemoryBuffer() {
+        return new CloudWatchLogsService(mockClient, cloudWatchLogsSinkConfig, buffer, pluginMetrics,
                 thresholdCheck, thresholdConfig.getRetryCount(), ThresholdConfig.DEFAULT_BACKOFF_TIME);
     }
 
@@ -146,16 +143,16 @@ public class CwlClientTest {
 
     @Test
     void client_creation_test() {
-        CwlClient cwlClient = getCwlClientWithMemoryBuffer();
+        CloudWatchLogsService cloudWatchLogsService = getCwlClientWithMemoryBuffer();
     }
 
     @Test
     void retry_count_limit_reached_test() {
         setMockClientThrowCWLException();
-        CwlClient cwlClient = getCwlClientWithMemoryBuffer();
+        CloudWatchLogsService cloudWatchLogsService = getCwlClientWithMemoryBuffer();
 
         try {
-            cwlClient.output(getSampleRecords(ThresholdConfig.DEFAULT_BATCH_SIZE * 2));
+            cloudWatchLogsService.output(getSampleRecords(ThresholdConfig.DEFAULT_BATCH_SIZE * 2));
         } catch (RetransmissionLimitException e) { //TODO: Create a dedicated RuntimeException for this.
             assertThat(e, notNullValue());
         }
@@ -164,10 +161,10 @@ public class CwlClientTest {
     @Test
     void check_failed_event_transmission_test() {
         setMockClientThrowCWLException();
-        CwlClient cwlClient = getCwlClientWithMemoryBuffer();
+        CloudWatchLogsService cloudWatchLogsService = getCwlClientWithMemoryBuffer();
 
         try {
-            cwlClient.output(getSampleRecords(ThresholdConfig.DEFAULT_BATCH_SIZE));
+            cloudWatchLogsService.output(getSampleRecords(ThresholdConfig.DEFAULT_BATCH_SIZE));
         } catch (RetransmissionLimitException e) {
             verify(failedEventCounter).increment(ThresholdConfig.DEFAULT_BATCH_SIZE);
         }
@@ -176,9 +173,9 @@ public class CwlClientTest {
     @Test
     void check_successful_event_transmission_test() {
         setMockClientNoErrors();
-        CwlClient cwlClient = getCwlClientWithMemoryBuffer();
+        CloudWatchLogsService cloudWatchLogsService = getCwlClientWithMemoryBuffer();
 
-        cwlClient.output(getSampleRecords(ThresholdConfig.DEFAULT_BATCH_SIZE * 2));
+        cloudWatchLogsService.output(getSampleRecords(ThresholdConfig.DEFAULT_BATCH_SIZE * 2));
 
         verify(successEventCounter, atLeast(2)).increment(anyDouble());
     }
@@ -186,10 +183,10 @@ public class CwlClientTest {
     @Test
     void check_failed_event_test() {
         setMockClientThrowCWLException();
-        CwlClient cwlClient = getCwlClientWithMemoryBuffer();
+        CloudWatchLogsService cloudWatchLogsService = getCwlClientWithMemoryBuffer();
 
         try {
-            cwlClient.output(getSampleRecords(ThresholdConfig.DEFAULT_BATCH_SIZE * 4));
+            cloudWatchLogsService.output(getSampleRecords(ThresholdConfig.DEFAULT_BATCH_SIZE * 4));
         } catch (RetransmissionLimitException e) {
             verify(requestFailCounter, atLeast(ThresholdConfig.DEFAULT_RETRY_COUNT)).increment();
         }
@@ -198,9 +195,9 @@ public class CwlClientTest {
     @Test
     void check_successful_event_test() {
         setMockClientNoErrors();
-        CwlClient cwlClient = getCwlClientWithMemoryBuffer();
+        CloudWatchLogsService cloudWatchLogsService = getCwlClientWithMemoryBuffer();
 
-        cwlClient.output(getSampleRecords(ThresholdConfig.DEFAULT_BATCH_SIZE * 4));
+        cloudWatchLogsService.output(getSampleRecords(ThresholdConfig.DEFAULT_BATCH_SIZE * 4));
 
         verify(requestSuccessCounter, atLeast(4)).increment();
     }
@@ -208,12 +205,12 @@ public class CwlClientTest {
     @Test
     void check_event_handles_successfully_released_test() {
         setMockClientNoErrors();
-        CwlClient cwlClient = getCwlClientWithMemoryBuffer();
+        CloudWatchLogsService cloudWatchLogsService = getCwlClientWithMemoryBuffer();
 
         final Collection<Record<Event>> sampleEvents = getSampleRecords(ThresholdConfig.DEFAULT_BATCH_SIZE * 2);
         final Collection<EventHandle> sampleEventHandles = sampleEvents.stream().map(Record::getData).map(Event::getEventHandle).collect(Collectors.toList());
 
-        cwlClient.output(sampleEvents);
+        cloudWatchLogsService.output(sampleEvents);
 
         for (EventHandle sampleEventHandle: sampleEventHandles) {
             verify(sampleEventHandle).release(true);
@@ -223,13 +220,13 @@ public class CwlClientTest {
     @Test
     void check_event_handles_failed_released_test() {
         setMockClientThrowCWLException();
-        CwlClient cwlClient = getCwlClientWithMemoryBuffer();
+        CloudWatchLogsService cloudWatchLogsService = getCwlClientWithMemoryBuffer();
 
         final Collection<Record<Event>> sampleEvents = getSampleRecords(ThresholdConfig.DEFAULT_BATCH_SIZE);
         final Collection<EventHandle> sampleEventHandles = sampleEvents.stream().map(Record::getData).map(Event::getEventHandle).collect(Collectors.toList());
 
         try {
-            cwlClient.output(sampleEvents);
+            cloudWatchLogsService.output(sampleEvents);
         } catch (RetransmissionLimitException e) {
             for (EventHandle sampleEventHandle: sampleEventHandles) {
                 verify(sampleEventHandle).release(false);
@@ -250,11 +247,11 @@ public class CwlClientTest {
     @Test
     void check_max_size_threshold_fail_test() {
         setMockClientNoErrors();
-        CwlClient cwlClient = getCwlClientWithMemoryBuffer();
+        CloudWatchLogsService cloudWatchLogsService = getCwlClientWithMemoryBuffer();
 
         final Collection<Record<Event>> sampleEvents = getSampleRecordsLarge(ThresholdConfig.DEFAULT_BATCH_SIZE, ThresholdConfig.DEFAULT_EVENT_SIZE * 1000 - 13);
 
-        cwlClient.output(sampleEvents);
+        cloudWatchLogsService.output(sampleEvents);
 
         verify(successEventCounter, never()).increment(anyDouble());
         verify(requestSuccessCounter, never()).increment();
@@ -263,11 +260,11 @@ public class CwlClientTest {
     @Test
     void check_max_size_threshold_success_test() {
         setMockClientNoErrors();
-        CwlClient cwlClient = getCwlClientWithMemoryBuffer();
+        CloudWatchLogsService cloudWatchLogsService = getCwlClientWithMemoryBuffer();
 
         final Collection<Record<Event>> sampleEvents = getSampleRecordsLarge(ThresholdConfig.DEFAULT_BATCH_SIZE, ThresholdConfig.DEFAULT_EVENT_SIZE * 1000 - 14);
 
-        cwlClient.output(sampleEvents);
+        cloudWatchLogsService.output(sampleEvents);
 
         verify(successEventCounter, atLeastOnce()).increment(anyDouble());
         verify(requestSuccessCounter, atLeastOnce()).increment();
@@ -277,9 +274,9 @@ public class CwlClientTest {
     void check_max_request_size_threshold_fail_test() {
         setThresholdForTestingRequestSize();
         setMockClientNoErrors();
-        CwlClient cwlClient = getCwlClientWithMemoryBuffer();
+        CloudWatchLogsService cloudWatchLogsService = getCwlClientWithMemoryBuffer();
 
-        cwlClient.output(getSampleRecordsLarge(1, ThresholdConfig.DEFAULT_SIZE_OF_REQUEST - 13));
+        cloudWatchLogsService.output(getSampleRecordsLarge(1, ThresholdConfig.DEFAULT_SIZE_OF_REQUEST - 13));
 
         verify(requestSuccessCounter, never()).increment();
     }
@@ -288,9 +285,9 @@ public class CwlClientTest {
     void check_max_request_size_threshold_success_test() {
         setThresholdForTestingRequestSize();
         setMockClientNoErrors();
-        CwlClient cwlClient = getCwlClientWithMemoryBuffer();
+        CloudWatchLogsService cloudWatchLogsService = getCwlClientWithMemoryBuffer();
 
-        cwlClient.output(getSampleRecordsLarge(1, ThresholdConfig.DEFAULT_SIZE_OF_REQUEST - 14));
+        cloudWatchLogsService.output(getSampleRecordsLarge(1, ThresholdConfig.DEFAULT_SIZE_OF_REQUEST - 14));
 
         verify(requestSuccessCounter, atLeast(1)).increment();
     }

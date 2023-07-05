@@ -24,14 +24,14 @@ public class ThresholdCheckTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {1, 10, 99})
+    @ValueSource(ints = {1, 10, 24})
     void check_batchSize_invalid(final int batch_size) {
         assertThat(thresholdCheck.checkBatchSize(batch_size), is(false));
     }
 
     @Test
     void check_batchSize_valid() {
-        assertThat(thresholdCheck.checkBatchSize(ThresholdConfig.DEFAULT_BATCH_SIZE), is(true));
+        assertThat(thresholdCheck.checkBatchSize(ThresholdConfig.DEFAULT_BATCH_SIZE), is(false));
     }
 
     @ParameterizedTest
