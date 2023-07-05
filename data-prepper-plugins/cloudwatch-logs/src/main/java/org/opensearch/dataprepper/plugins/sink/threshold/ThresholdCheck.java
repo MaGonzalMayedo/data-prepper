@@ -27,7 +27,7 @@ public class ThresholdCheck {
 
     public boolean isThresholdReached(long currentTime, int currentRequestSize, int batchSize) {
         return ((checkBatchSize(batchSize) || checkLogSendInterval(currentTime)
-                || checkMaxRequestSize(currentRequestSize)) && (batchSize != 0));
+                || checkMaxRequestSize(currentRequestSize)) && (batchSize > 0));
     }
 
     /**

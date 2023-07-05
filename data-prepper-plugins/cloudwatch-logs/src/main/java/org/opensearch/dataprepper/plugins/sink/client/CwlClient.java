@@ -92,7 +92,10 @@ public class CwlClient {
     public void output(final Collection<Record<Event>> logs) {
         reentrantLock.lock();
 
-        startStopWatch();
+        if (!stopWatchOn) {
+            startStopWatch();
+        }
+
         for (Record<Event> singleLog: logs) {
             String logJsonString = singleLog.getData().toJsonString();
             int logLength = logJsonString.length();
@@ -116,7 +119,9 @@ public class CwlClient {
                 startStopWatch();
             }
 
-            bufferedEventHandles.add(singleLog.getData().getEventHandle());
+            if (singleLog.getData().getEventHandle() != null) {
+                bufferedEventHandles.add(singleLog.getData().getEventHandle());
+            }
             buffer.writeEvent(logJsonString.getBytes());
         }
 
@@ -202,6 +207,10 @@ public class CwlClient {
      * @param endIndex - int denoting the endibng index (non-inclusive)
      */
     private void changeHandleStateRange(final int startIndex, final int endIndex, final boolean state) {
+        if (bufferedEventHandles.size() == 0) {
+            return;
+        }
+
         for (int i = startIndex; i < endIndex; i++) {
             bufferedEventHandles.get(i).release(state);
         }
@@ -237,6 +246,10 @@ public class CwlClient {
     }
 
     private void releaseEventHandles(final boolean result) {
+        if (bufferedEventHandles.size() == 0) {
+            return;
+        }
+
         for (EventHandle eventHandle : bufferedEventHandles) {
             eventHandle.release(result);
         }
