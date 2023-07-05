@@ -32,7 +32,7 @@ import java.util.concurrent.locks.ReentrantLock;
                     as currently the logs that are able to be published but rejected by CloudWatch Logs will simply be deleted if not deferred to
                     a backup storage.
                  */
-
+//TODO: Must also consider if the customer makes the logEvent size bigger than the send request size.
 //TODO: Can inject another class for the stopWatch functionality.
 
 public class CwlClient {
@@ -112,7 +112,7 @@ public class CwlClient {
             long stopWatchTime = getStopWatchTime();
 
             //Conditions for pushingLogs to CWL services:
-            if (thresholdCheck.isThresholdReached(getStopWatchTime(), buffer.getBufferSize() + logLength, buffer.getEventCount())) {
+            if (thresholdCheck.isThresholdReached(getStopWatchTime(), buffer.getBufferSize() + logLength, buffer.getEventCount() + 1)) {
                 LOG.info("Attempting to push logs!");
                 pushLogs();
                 stopAndResetStopWatch();
@@ -230,7 +230,7 @@ public class CwlClient {
      * do one last PLE.
      */
     private void runExitCheck() {
-        if (thresholdCheck.isThresholdReached(getStopWatchTime(), buffer.getBufferSize(), buffer.getEventCount())) {
+        if (thresholdCheck.isExitThresholdReached(buffer.getBufferSize(), buffer.getEventCount())) {
             LOG.info("Attempting to push logs!");
             pushLogs();
             stopAndResetStopWatch();

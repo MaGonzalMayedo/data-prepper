@@ -98,6 +98,10 @@ public class CwlClientTest {
         lenient().when(pluginMetrics.counter(CwlClient.REQUESTS_FAILED)).thenReturn(requestFailCounter);
     }
 
+    void setThresholdForTestingRequestSize() {
+        thresholdCheck = new ThresholdCheck(10000, ThresholdConfig.DEFAULT_SIZE_OF_REQUEST, ThresholdConfig.DEFAULT_SIZE_OF_REQUEST, ThresholdConfig.DEFAULT_LOG_SEND_INTERVAL_TIME);
+    }
+
     CwlClient getCwlClientWithMemoryBuffer() {
         return new CwlClient(mockClient, cwlSinkConfig, buffer, pluginMetrics,
                 thresholdCheck, thresholdConfig.getRetryCount(), ThresholdConfig.DEFAULT_BACKOFF_TIME);
@@ -233,16 +237,26 @@ public class CwlClientTest {
         }
     }
 
+    /**
+     * Tests if our json string has the is equal to the default event size in bytes.
+     */
+    @Test
+    void check_event_size_correct_test() {
+        ArrayList<Record<Event>> sampleEvents = (ArrayList<Record<Event>>) getSampleRecordsLarge(ThresholdConfig.DEFAULT_BATCH_SIZE, ThresholdConfig.DEFAULT_EVENT_SIZE * 1000 - 14); //Accounts for the key string value.
+
+        assertThat(sampleEvents.get(0).getData().toJsonString().length(), equalTo(ThresholdConfig.DEFAULT_EVENT_SIZE * 1000));
+    }
+
     @Test
     void check_max_size_threshold_fail_test() {
         setMockClientNoErrors();
         CwlClient cwlClient = getCwlClientWithMemoryBuffer();
 
-        final Collection<Record<Event>> sampleEvents = getSampleRecordsLarge(ThresholdConfig.DEFAULT_BATCH_SIZE, ThresholdConfig.DEFAULT_EVENT_SIZE + 1);
+        final Collection<Record<Event>> sampleEvents = getSampleRecordsLarge(ThresholdConfig.DEFAULT_BATCH_SIZE, ThresholdConfig.DEFAULT_EVENT_SIZE * 1000 - 13);
 
         cwlClient.output(sampleEvents);
 
-        verify(successEventCounter, never()).increment(anyInt());
+        verify(successEventCounter, never()).increment(anyDouble());
         verify(requestSuccessCounter, never()).increment();
     }
 
@@ -251,11 +265,33 @@ public class CwlClientTest {
         setMockClientNoErrors();
         CwlClient cwlClient = getCwlClientWithMemoryBuffer();
 
-        final Collection<Record<Event>> sampleEvents = getSampleRecordsLarge(ThresholdConfig.DEFAULT_BATCH_SIZE, ThresholdConfig.DEFAULT_EVENT_SIZE);
+        final Collection<Record<Event>> sampleEvents = getSampleRecordsLarge(ThresholdConfig.DEFAULT_BATCH_SIZE, ThresholdConfig.DEFAULT_EVENT_SIZE * 1000 - 14);
 
         cwlClient.output(sampleEvents);
 
         verify(successEventCounter, atLeastOnce()).increment(anyDouble());
         verify(requestSuccessCounter, atLeastOnce()).increment();
+    }
+
+    @Test
+    void check_max_request_size_threshold_fail_test() {
+        setThresholdForTestingRequestSize();
+        setMockClientNoErrors();
+        CwlClient cwlClient = getCwlClientWithMemoryBuffer();
+
+        cwlClient.output(getSampleRecordsLarge(1, ThresholdConfig.DEFAULT_SIZE_OF_REQUEST - 13));
+
+        verify(requestSuccessCounter, never()).increment();
+    }
+
+    @Test
+    void check_max_request_size_threshold_success_test() {
+        setThresholdForTestingRequestSize();
+        setMockClientNoErrors();
+        CwlClient cwlClient = getCwlClientWithMemoryBuffer();
+
+        cwlClient.output(getSampleRecordsLarge(1, ThresholdConfig.DEFAULT_SIZE_OF_REQUEST - 14));
+
+        verify(requestSuccessCounter, atLeast(1)).increment();
     }
 }
