@@ -18,7 +18,7 @@ import org.opensearch.dataprepper.plugins.sink.threshold.ThresholdCheck;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
-import software.amazon.awssdk.core.exception.RetryableException;
+import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.model.InputLogEvent;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsRequest;
@@ -178,7 +178,7 @@ public class CloudWatchLogsService {
                 logEventSuccessCounter.increment(Math.max(rejectedLogEventsInfo.tooNewLogEventStartIndex() - Math.max(rejectedLogEventsInfo.tooOldLogEventEndIndex(), rejectedLogEventsInfo.expiredLogEventEndIndex()) - 1, 0));
                 bufferedEventHandles.clear();
                 failedPost = false;
-            } catch (AwsServiceException | RetryableException e) {
+            } catch (AwsServiceException | SdkClientException e) {
                 LOG.error("Failed to push logs with error: {}", e.getMessage());
 
                 try {
@@ -222,12 +222,12 @@ public class CloudWatchLogsService {
     }
 
     /**
-     * Backoff function that calculates the exponential back off time
+     * Backoff function that calculates the scaled back off time
      * based on the current attempt count multiplied by backOffTimeBase milliseconds.
      * @return long - The backoff time that represents the new wait time between retries.
      */
     private long calculateBackOffTime(long backOffTimeBase) {
-        return ((long) Math.pow(2, failCounter)) * backOffTimeBase;
+        return failCounter * backOffTimeBase;
     }
 
     /**
