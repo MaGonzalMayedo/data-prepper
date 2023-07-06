@@ -10,6 +10,7 @@ repositories {
 dependencies {
     api project(':data-prepper-api')
     implementation project(':data-prepper-plugins:aws-plugin-api')
+    implementation project(path: ':data-prepper-plugins:cloudwatch-logs')
     testImplementation platform('org.junit:junit-bom:5.9.1')
     implementation 'io.micrometer:micrometer-core'
     testImplementation('org.mockito:mockito-inline:3.8.0')
@@ -21,7 +22,6 @@ dependencies {
     implementation 'software.amazon.awssdk:cloudwatch'
     implementation 'software.amazon.awssdk:cloudwatchlogs'
     implementation 'org.apache.commons:commons-lang3:3.12.0'
-    testImplementation project(path: ':data-prepper-test-common')
     testImplementation project(path: ':data-prepper-test-common')
 }
 
@@ -38,4 +38,33 @@ jacocoTestCoverageVerification {
 
 test {
     useJUnitPlatform()
+}
+
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integrationTest/java')
+        }
+        resources.srcDir file('src/integrationTest/resources')
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntime.extendsFrom testRuntime
+}
+
+task integrationTest(type: Test) {
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+
+    useJUnitPlatform()
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    filter {
+        includeTestsMatching '*IT'
+    }
 }

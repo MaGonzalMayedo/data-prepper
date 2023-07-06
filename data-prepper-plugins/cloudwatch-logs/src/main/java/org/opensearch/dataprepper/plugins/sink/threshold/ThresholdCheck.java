@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.plugins.sink.threshold;
 
 /**
- * ThresholdCheck receives paramaters for which to reference the
+ * ThresholdCheck receives parameters for which to reference the
  * limits of a buffer and CloudWatchLogsClient before making a
  * PutLogEvent request to AWS.
  */
