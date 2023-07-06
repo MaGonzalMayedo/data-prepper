@@ -7,20 +7,38 @@ package org.opensearch.dataprepper.plugins.sink;
 
 import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.sink.buffer.Buffer;
 import org.opensearch.dataprepper.plugins.sink.buffer.BufferFactory;
+import org.opensearch.dataprepper.plugins.sink.buffer.InMemoryBufferFactory;
+import org.opensearch.dataprepper.plugins.sink.client.CloudWatchLogsClientFactory;
 import org.opensearch.dataprepper.plugins.sink.client.CloudWatchLogsService;
 import org.opensearch.dataprepper.plugins.sink.config.AwsConfig;
 import org.opensearch.dataprepper.plugins.sink.config.CloudWatchLogsSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.config.ThresholdConfig;
 import org.opensearch.dataprepper.plugins.sink.threshold.ThresholdCheck;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
+import software.amazon.awssdk.services.cloudwatchlogs.model.GetLogEventsRequest;
+import software.amazon.awssdk.services.cloudwatchlogs.model.GetLogEventsResponse;
+import software.amazon.awssdk.services.cloudwatchlogs.model.OutputLogEvent;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import java.util.ArrayList;
+import java.util.List;
+
+import static java.lang.Thread.sleep;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
 public class CloudWatchLogsServiceIT {
     @Mock
@@ -43,10 +61,12 @@ public class CloudWatchLogsServiceIT {
     private ThresholdCheck thresholdCheck;
     @Mock
     private CloudWatchLogsService cloudWatchLogsService;
-    public static final String LOG_GROUP = "testLogGroup";
-    public static final String LOG_STREAM = "testLogStream";
+    private CloudWatchLogsClient cloudWatchLogsClient;
+    public static final String LOG_GROUP = "testLogGroup"; //TODO: Change these to system properties once plugin is added.
+    public static final String LOG_STREAM = "testLogStream"; //TODO: Change these to system properties once the plugin is added.
     public static final String PIPELINE_NAME = "test_pipeline";
     public static final String PLUGIN_NAME = "cwl-sink";
+    public static final String TEST_LOG_MESSAGE = "testing CloudWatchLogs Plugin";
     private Counter requestSuccessCounter;
     private Counter requestFailCounter;
     private Counter successEventCounter;
@@ -57,6 +77,8 @@ public class CloudWatchLogsServiceIT {
         cloudWatchLogsSinkConfig = mock(CloudWatchLogsSinkConfig.class);
         awsConfig = mock(AwsConfig.class);
         thresholdConfig = new ThresholdConfig();
+        thresholdCheck = new ThresholdCheck(1, thresholdConfig.getMaxEventSize(),
+                thresholdConfig.getMaxRequestSize(), thresholdConfig.getLogSendInterval());
         pluginSetting = mock(PluginSetting.class);
         pluginMetrics = mock(PluginMetrics.class);
         awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
@@ -66,17 +88,93 @@ public class CloudWatchLogsServiceIT {
         successEventCounter = mock(Counter.class);
         failedEventCounter = mock(Counter.class);
 
+        bufferFactory = new InMemoryBufferFactory();
+        buffer = bufferFactory.getBuffer();
+
         when(cloudWatchLogsSinkConfig.getBufferType()).thenReturn(CloudWatchLogsSinkConfig.DEFAULT_BUFFER_TYPE);
         when(cloudWatchLogsSinkConfig.getLogGroup()).thenReturn(LOG_GROUP);
         when(cloudWatchLogsSinkConfig.getLogStream()).thenReturn(LOG_STREAM);
         when(cloudWatchLogsSinkConfig.getAwsConfig()).thenReturn(awsConfig);
         when(cloudWatchLogsSinkConfig.getThresholdConfig()).thenReturn(thresholdConfig);
 
+        lenient().when(pluginMetrics.counter(CloudWatchLogsService.NUMBER_OF_RECORDS_PUSHED_TO_CWL_SUCCESS)).thenReturn(successEventCounter);
+        lenient().when(pluginMetrics.counter(CloudWatchLogsService.REQUESTS_SUCCEEDED)).thenReturn(requestSuccessCounter);
+        lenient().when(pluginMetrics.counter(CloudWatchLogsService.NUMBER_OF_RECORDS_PUSHED_TO_CWL_FAIL)).thenReturn(failedEventCounter);
+        lenient().when(pluginMetrics.counter(CloudWatchLogsService.REQUESTS_FAILED)).thenReturn(requestFailCounter);
+
+        when(awsConfig.getAwsRegion()).thenReturn(Region.US_EAST_1);
+
+        cloudWatchLogsClient = CloudWatchLogsClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier);
+
         when(pluginSetting.getName()).thenReturn(PLUGIN_NAME);
         when(pluginSetting.getPipelineName()).thenReturn(PIPELINE_NAME);
     }
 
-    CloudWatchLogsSink getTestableSink() {
-        return new CloudWatchLogsSink(pluginSetting, pluginMetrics, cloudWatchLogsSinkConfig, awsCredentialsSupplier);
+    CloudWatchLogsService getTestableService() {
+        return new CloudWatchLogsService(cloudWatchLogsClient, cloudWatchLogsSinkConfig, buffer,
+                pluginMetrics, thresholdCheck, thresholdConfig.getRetryCount(),
+                thresholdConfig.getBackOffTime());
+    }
+
+    ArrayList<Record<Event>> getSampleEvent() {
+        final ArrayList<Record<Event>> eventList = new ArrayList<>();
+
+        Record<Event> testEvent = new Record<>(JacksonEvent.fromMessage(TEST_LOG_MESSAGE));
+        eventList.add(testEvent);
+
+        return eventList;
+    }
+
+    String retrieveLatestLogEvent() {
+        GetLogEventsRequest getLogEventsRequest = GetLogEventsRequest.builder()
+                .logGroupName(LOG_GROUP)
+                .logStreamName(LOG_STREAM)
+                .startFromHead(false)
+                .build();
+
+        GetLogEventsResponse getLogEventsResponse = cloudWatchLogsClient.getLogEvents(getLogEventsRequest);
+        List<OutputLogEvent> logEvents = getLogEventsResponse.events();
+
+        return logEvents.get(0).message();
+    }
+
+    int retrieveLogListSize() {
+        GetLogEventsRequest getLogEventsRequest = GetLogEventsRequest.builder()
+                .logGroupName(LOG_GROUP)
+                .logStreamName(LOG_STREAM)
+                .startFromHead(false)
+                .build();
+
+        return cloudWatchLogsClient.getLogEvents(getLogEventsRequest).events().size();
+    }
+
+    /**
+     * Want to send a log and retrieve it and compare body messages to ensure the log
+     * was properly ingested.
+     */
+    @Test
+    void check_logs_successfully_ingested() {
+        cloudWatchLogsService = getTestableService();
+        cloudWatchLogsService.output(getSampleEvent());
+
+        String resultMessage = retrieveLatestLogEvent();
+        String compareTo = JacksonEvent.fromMessage(TEST_LOG_MESSAGE).toJsonString();
+
+        assertThat(resultMessage, equalTo(compareTo));
+    }
+
+    @Test
+    void check_log_count_after_ingestion() throws InterruptedException {
+        cloudWatchLogsService = getTestableService();
+
+        int numberOfLogsPrior = retrieveLogListSize();
+
+        cloudWatchLogsService.output(getSampleEvent());
+
+        sleep(500); //Need to wait for AWS services to sync up after event is received.
+
+        int numberOfLogsAfter = retrieveLogListSize();
+
+        assertThat(numberOfLogsAfter, greaterThan((numberOfLogsPrior)));
     }
 }
