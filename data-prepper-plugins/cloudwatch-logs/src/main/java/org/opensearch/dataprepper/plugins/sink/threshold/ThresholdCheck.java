@@ -83,8 +83,13 @@ public class ThresholdCheck {
         return batchSize > this.batchSize;
     }
 
+    /**
+     * Checks if the request size is greater than or equal to the current size passed in.
+     * @param currentRequestSize int denoting size of request(Sum of PutLogEvent messages).
+     * @return boolean - true if equal Max request size, smaller otherwise.
+     */
     public boolean checkEqualMaxRequestSize(int currentRequestSize) {
-        return currentRequestSize >= maxRequestSizeBytes;
+        return currentRequestSize == maxRequestSizeBytes;
     }
 
     public boolean checkEqualBatchSize(int batchSize) {

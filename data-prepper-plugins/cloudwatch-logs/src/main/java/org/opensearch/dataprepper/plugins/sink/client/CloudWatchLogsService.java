@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.sink.client;
 
 import io.micrometer.core.instrument.Counter;
@@ -218,7 +223,7 @@ public class CloudWatchLogsService {
 
     /**
      * Backoff function that calculates the exponential back off time
-     * based on the current attempt count multiplied by 500 milliseconds.
+     * based on the current attempt count multiplied by backOffTimeBase milliseconds.
      * @return long - The backoff time that represents the new wait time between retries.
      */
     private long calculateBackOffTime(long backOffTimeBase) {
