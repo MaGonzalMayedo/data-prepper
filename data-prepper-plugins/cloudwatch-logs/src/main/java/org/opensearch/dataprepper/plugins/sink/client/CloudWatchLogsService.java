@@ -154,23 +154,11 @@ public class CloudWatchLogsService {
                 PutLogEventsResponse putLogEventsResponse = cloudWatchLogsClient.putLogEvents(putLogEventsRequest);
                 RejectedLogEventsInfo rejectedLogEventsInfo = putLogEventsResponse.rejectedLogEventsInfo();
 
-                if (rejectedLogEventsInfo == null) {
-                    requestSuccessCount.increment();
-                    failedPost = false;
-                    continue;
-                }
-
-                printRejectedLogSummary(rejectedLogEventsInfo);
-
+                requestSuccessCount.increment();
+                failedPost = false;
                 /*
                     TODO: When a log is rejected by the service, we cannot send it, can probably push to a DLQ here.
                  */
-
-                changeHandleStateRange(rejectedLogEventsInfo.tooNewLogEventStartIndex(), bufferedEventHandles.size(), false);
-                changeHandleStateRange(0, Math.max(rejectedLogEventsInfo.tooOldLogEventEndIndex(), rejectedLogEventsInfo.expiredLogEventEndIndex()), false);
-                logEventSuccessCounter.increment(Math.max(rejectedLogEventsInfo.tooNewLogEventStartIndex() - Math.max(rejectedLogEventsInfo.tooOldLogEventEndIndex(), rejectedLogEventsInfo.expiredLogEventEndIndex()) - 1, 0));
-                bufferedEventHandles.clear();
-                failedPost = false;
             } catch (AwsServiceException | SdkClientException e) {
                 LOG.error("Failed to push logs with error: {}", e.getMessage());
 
@@ -237,13 +225,6 @@ public class CloudWatchLogsService {
         }
     }
 
-    private void printRejectedLogSummary(RejectedLogEventsInfo rejectedLogEventsInfo) {
-        LOG.warn("Some logs were rejected!");
-        LOG.warn("Too new log event start index: " + rejectedLogEventsInfo.tooNewLogEventStartIndex());
-        LOG.warn("Too old log  event end index: " + rejectedLogEventsInfo.tooOldLogEventEndIndex());
-        LOG.warn("Expired log event end index: " + rejectedLogEventsInfo.expiredLogEventEndIndex());
-    }
-
     private void releaseEventHandles(final boolean result) {
         if (bufferedEventHandles.size() == 0) {
             return;
@@ -254,14 +235,6 @@ public class CloudWatchLogsService {
         }
 
         bufferedEventHandles.clear();
-    }
-
-    private void clearEventHandles() {
-        bufferedEventHandles.clear();
-    }
-
-    public void shutdown() {
-        cloudWatchLogsClient.close();
     }
 
     private void startStopWatch() {
