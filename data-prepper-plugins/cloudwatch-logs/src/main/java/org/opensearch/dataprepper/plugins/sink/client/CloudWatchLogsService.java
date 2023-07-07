@@ -22,8 +22,6 @@ import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.model.InputLogEvent;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsRequest;
-import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsResponse;
-import software.amazon.awssdk.services.cloudwatchlogs.model.RejectedLogEventsInfo;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -61,8 +59,7 @@ public class CloudWatchLogsService {
     private boolean failedPost;
     private final StopWatch stopWatch;
     private boolean stopWatchOn;
-
-    private ReentrantLock reentrantLock;
+    private final ReentrantLock reentrantLock;
 
     public CloudWatchLogsService(final CloudWatchLogsClient cloudWatchLogsClient, final CloudWatchLogsSinkConfig cloudWatchLogsSinkConfig, final Buffer buffer,
                                  final PluginMetrics pluginMetrics, final ThresholdCheck thresholdCheck, final int retryCount, final long backOffTimeBase) {
@@ -104,13 +101,13 @@ public class CloudWatchLogsService {
             String logJsonString = singleLog.getData().toJsonString();
             int logLength = logJsonString.length();
 
-            if (thresholdCheck.checkMaxEventSize(logLength + 26)) {
+            if (thresholdCheck.checkGreaterThanMaxEventSize(logLength + 26)) {
                 LOG.warn("Event blocked due to Max Size restriction!");
                 continue;
             }
 
             int bufferSizeWithOverHead = (buffer.getBufferSize() + (buffer.getEventCount() * LOG_EVENT_OVERHEAD_SIZE));
-            if (thresholdCheck.isThresholdReached(getStopWatchTime(),  bufferSizeWithOverHead + logLength + LOG_EVENT_OVERHEAD_SIZE, buffer.getEventCount() + 1)) {
+            if (thresholdCheck.isGreaterThanThresholdReached(getStopWatchTime(),  bufferSizeWithOverHead + logLength + LOG_EVENT_OVERHEAD_SIZE, buffer.getEventCount() + 1)) {
                 LOG.info("Attempting to push logs!");
                 pushLogs();
                 stopAndResetStopWatch();
@@ -127,10 +124,6 @@ public class CloudWatchLogsService {
         reentrantLock.unlock();
     }
 
-    /**
-     * pushLogs handles the building of PutLogEvents around a given collection of buffered events.
-     * It implements a simple exponential back off time sequence.
-     */
     private void pushLogs() {
         ArrayList<InputLogEvent> logEventList = new ArrayList<>();
         failedPost = true;
@@ -151,8 +144,7 @@ public class CloudWatchLogsService {
                         .logStreamName(logStream)
                         .build();
 
-                PutLogEventsResponse putLogEventsResponse = cloudWatchLogsClient.putLogEvents(putLogEventsRequest);
-                RejectedLogEventsInfo rejectedLogEventsInfo = putLogEventsResponse.rejectedLogEventsInfo();
+                cloudWatchLogsClient.putLogEvents(putLogEventsRequest);
 
                 requestSuccessCount.increment();
                 failedPost = false;
@@ -186,38 +178,13 @@ public class CloudWatchLogsService {
         }
     }
 
-    /**
-     * Changes the state of the specified range of event handles.
-     * Not end inclusive.
-     * @param startIndex - int denoting the starting index (inclusive)
-     * @param endIndex - int denoting the endibng index (non-inclusive)
-     */
-    private void changeHandleStateRange(final int startIndex, final int endIndex, final boolean state) {
-        if (bufferedEventHandles.size() == 0) {
-            return;
-        }
-
-        for (int i = startIndex; i < endIndex; i++) {
-            bufferedEventHandles.get(i).release(state);
-        }
-    }
-
-    /**
-     * Backoff function that calculates the scaled back off time
-     * based on the current attempt count multiplied by backOffTimeBase milliseconds.
-     * @return long - The backoff time that represents the new wait time between retries.
-     */
     private long calculateBackOffTime(long backOffTimeBase) {
         return failCounter * backOffTimeBase;
     }
 
-    /**
-     * One last check to ensure that if we meet the requirements before exiting, we
-     * do one last PLE.
-     */
     private void runExitCheck() {
         int bufferSizeWithOverHead = (buffer.getBufferSize() + (buffer.getEventCount() * LOG_EVENT_OVERHEAD_SIZE));
-        if (thresholdCheck.isExitThresholdReached(bufferSizeWithOverHead, buffer.getEventCount())) {
+        if (thresholdCheck.isEqualToThresholdReached(bufferSizeWithOverHead, buffer.getEventCount())) {
             LOG.info("Attempting to push logs!");
             pushLogs();
             stopAndResetStopWatch();
