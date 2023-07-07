@@ -31,8 +31,6 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
-//TODO: Need to add e2e testing here to test this the range of the acquired events by CWL.
-
                 /*TODO: Can add DLQ logic here for sending these logs to a particular DLQ for error checking. (Explicitly for bad formatted logs).
                     as currently the logs that are able to be published but rejected by CloudWatch Logs will simply be deleted if not deferred to
                     a backup storage.
@@ -41,6 +39,7 @@ import java.util.concurrent.locks.ReentrantLock;
 //TODO: Can inject another class for the stopWatch functionality.
 
 public class CloudWatchLogsService {
+    public static final int LOG_EVENT_OVERHEAD_SIZE = 26; //Size of overhead for each log event message.
     public static final String NUMBER_OF_RECORDS_PUSHED_TO_CWL_SUCCESS = "cloudWatchLogsEventsSucceeded";
     public static final String NUMBER_OF_RECORDS_PUSHED_TO_CWL_FAIL = "cloudWatchLogsEventsFailed";
     public static final String REQUESTS_SUCCEEDED = "cloudWatchLogsRequestsSucceeded";
@@ -91,7 +90,7 @@ public class CloudWatchLogsService {
 
     /**
      * Function handles the packaging of events into log events before sending a bulk request to CloudWatchLogs.
-     * Implements simple batch limit buffer. (Sends once batch size is reached)
+     * Implements simple conditional buffer. (Sends once batch size, request size in bytes, or time limit is reached)
      * @param logs - Collection of Record events which hold log data.
      */
     public void output(final Collection<Record<Event>> logs) {
@@ -105,19 +104,13 @@ public class CloudWatchLogsService {
             String logJsonString = singleLog.getData().toJsonString();
             int logLength = logJsonString.length();
 
-            if (thresholdCheck.checkMaxEventSize(logLength)) {
+            if (thresholdCheck.checkMaxEventSize(logLength + 26)) {
                 LOG.warn("Event blocked due to Max Size restriction!");
                 continue;
             }
 
-            //Testing Vars, remove after debugging:
-            boolean testBatchCond = thresholdCheck.checkBatchSize(buffer.getEventCount());
-            boolean testLogSendInterval = thresholdCheck.checkLogSendInterval(getStopWatchTime());
-            boolean testMaxRequestSize = thresholdCheck.checkMaxRequestSize(buffer.getBufferSize() + logLength);
-            long stopWatchTime = getStopWatchTime();
-
-            //Conditions for pushingLogs to CWL services:
-            if (thresholdCheck.isThresholdReached(getStopWatchTime(), buffer.getBufferSize() + logLength, buffer.getEventCount() + 1)) {
+            int bufferSizeWithOverHead = (buffer.getBufferSize() + (buffer.getEventCount() * LOG_EVENT_OVERHEAD_SIZE));
+            if (thresholdCheck.isThresholdReached(getStopWatchTime(),  bufferSizeWithOverHead + logLength + LOG_EVENT_OVERHEAD_SIZE, buffer.getEventCount() + 1)) {
                 LOG.info("Attempting to push logs!");
                 pushLogs();
                 stopAndResetStopWatch();
@@ -235,7 +228,8 @@ public class CloudWatchLogsService {
      * do one last PLE.
      */
     private void runExitCheck() {
-        if (thresholdCheck.isExitThresholdReached(buffer.getBufferSize(), buffer.getEventCount())) {
+        int bufferSizeWithOverHead = (buffer.getBufferSize() + (buffer.getEventCount() * LOG_EVENT_OVERHEAD_SIZE));
+        if (thresholdCheck.isExitThresholdReached(bufferSizeWithOverHead, buffer.getEventCount())) {
             LOG.info("Attempting to push logs!");
             pushLogs();
             stopAndResetStopWatch();
