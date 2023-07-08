@@ -101,8 +101,8 @@ public class CloudWatchLogsServiceTest {
         lenient().when(pluginMetrics.counter(CloudWatchLogsService.REQUESTS_FAILED)).thenReturn(requestFailCounter);
     }
 
-    void setThresholdForTestingRequestSize() {
-        thresholdCheck = new ThresholdCheck(10000, ThresholdConfig.DEFAULT_SIZE_OF_REQUEST, ThresholdConfig.DEFAULT_SIZE_OF_REQUEST, ThresholdConfig.DEFAULT_LOG_SEND_INTERVAL_TIME);
+    void setThresholdForTestingRequestSize(int size) {
+        thresholdCheck = new ThresholdCheck(10000, size, ThresholdConfig.DEFAULT_SIZE_OF_REQUEST, ThresholdConfig.DEFAULT_LOG_SEND_INTERVAL_TIME);
     }
 
     CloudWatchLogsService getCwlClientWithMemoryBuffer() {
@@ -279,7 +279,7 @@ public class CloudWatchLogsServiceTest {
 
     @Test
     void check_max_request_size_threshold_fail_test() {
-        setThresholdForTestingRequestSize();
+        setThresholdForTestingRequestSize(ThresholdConfig.DEFAULT_SIZE_OF_REQUEST);
         setMockClientNoErrors();
         CloudWatchLogsService cloudWatchLogsService = getCwlClientWithMemoryBuffer();
 
@@ -290,11 +290,22 @@ public class CloudWatchLogsServiceTest {
 
     @Test
     void check_max_request_size_threshold_success_test() {
-        setThresholdForTestingRequestSize();
+        setThresholdForTestingRequestSize(ThresholdConfig.DEFAULT_SIZE_OF_REQUEST);
         setMockClientNoErrors();
         CloudWatchLogsService cloudWatchLogsService = getCwlClientWithMemoryBuffer();
 
         cloudWatchLogsService.output(getSampleRecordsLarge(1, ThresholdConfig.DEFAULT_SIZE_OF_REQUEST - messageKeyByteSize - CloudWatchLogsService.LOG_EVENT_OVERHEAD_SIZE));
+
+        verify(requestSuccessCounter, atLeast(1)).increment();
+    }
+
+    @Test
+    void check_max_api_request_size_threshold_success_test() {
+        setThresholdForTestingRequestSize(ThresholdConfig.DEFAULT_SIZE_OF_REQUEST * 2);
+        setMockClientNoErrors();
+        CloudWatchLogsService cloudWatchLogsService = getCwlClientWithMemoryBuffer();
+
+        cloudWatchLogsService.output(getSampleRecordsLarge(1, (ThresholdConfig.DEFAULT_SIZE_OF_REQUEST * 2) - messageKeyByteSize - CloudWatchLogsService.LOG_EVENT_OVERHEAD_SIZE));
 
         verify(requestSuccessCounter, atLeast(1)).increment();
     }
