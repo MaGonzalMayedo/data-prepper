@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.sink.buffer.Buffer;
@@ -31,6 +32,7 @@ import software.amazon.awssdk.services.cloudwatchlogs.model.GetLogEventsResponse
 import software.amazon.awssdk.services.cloudwatchlogs.model.OutputLogEvent;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import static java.lang.Thread.sleep;
@@ -77,7 +79,7 @@ public class CloudWatchLogsServiceIT {
         cloudWatchLogsSinkConfig = mock(CloudWatchLogsSinkConfig.class);
         awsConfig = mock(AwsConfig.class);
         thresholdConfig = new ThresholdConfig();
-        thresholdCheck = new ThresholdCheck(1, thresholdConfig.getMaxEventSize(),
+        thresholdCheck = new ThresholdCheck(1, thresholdConfig.getMaxEventSize() * 1024,
                 thresholdConfig.getMaxRequestSize(), thresholdConfig.getLogSendInterval());
         pluginSetting = mock(PluginSetting.class);
         pluginMetrics = mock(PluginMetrics.class);
@@ -97,10 +99,10 @@ public class CloudWatchLogsServiceIT {
         when(cloudWatchLogsSinkConfig.getAwsConfig()).thenReturn(awsConfig);
         when(cloudWatchLogsSinkConfig.getThresholdConfig()).thenReturn(thresholdConfig);
 
-        lenient().when(pluginMetrics.counter(CloudWatchLogsService.NUMBER_OF_RECORDS_PUSHED_TO_CWL_SUCCESS)).thenReturn(successEventCounter);
-        lenient().when(pluginMetrics.counter(CloudWatchLogsService.REQUESTS_SUCCEEDED)).thenReturn(requestSuccessCounter);
-        lenient().when(pluginMetrics.counter(CloudWatchLogsService.NUMBER_OF_RECORDS_PUSHED_TO_CWL_FAIL)).thenReturn(failedEventCounter);
-        lenient().when(pluginMetrics.counter(CloudWatchLogsService.REQUESTS_FAILED)).thenReturn(requestFailCounter);
+        when(pluginMetrics.counter(CloudWatchLogsService.NUMBER_OF_RECORDS_PUSHED_TO_CWL_SUCCESS)).thenReturn(successEventCounter);
+        when(pluginMetrics.counter(CloudWatchLogsService.REQUESTS_SUCCEEDED)).thenReturn(requestSuccessCounter);
+        when(pluginMetrics.counter(CloudWatchLogsService.NUMBER_OF_RECORDS_PUSHED_TO_CWL_FAIL)).thenReturn(failedEventCounter);
+        when(pluginMetrics.counter(CloudWatchLogsService.REQUESTS_FAILED)).thenReturn(requestFailCounter);
 
         when(awsConfig.getAwsRegion()).thenReturn(Region.US_EAST_1);
 
@@ -123,6 +125,19 @@ public class CloudWatchLogsServiceIT {
         eventList.add(testEvent);
 
         return eventList;
+    }
+
+    Collection<Record<Event>> getSampleRecordsLarge(int numberOfRecords, int sizeOfRecordsBytes) {
+        final ArrayList<Record<Event>> returnCollection = new ArrayList<>();
+        final String testMessage = "a";
+        for (int i = 0; i < numberOfRecords; i++) {
+            JacksonEvent mockJacksonEvent = (JacksonEvent) JacksonEvent.fromMessage(testMessage.repeat(sizeOfRecordsBytes));
+            final EventHandle mockEventHandle = mock(EventHandle.class);
+            mockJacksonEvent.setEventHandle(mockEventHandle);
+            returnCollection.add(new Record<>(mockJacksonEvent));
+        }
+
+        return returnCollection;
     }
 
     String retrieveLatestLogEvent() {
@@ -153,9 +168,11 @@ public class CloudWatchLogsServiceIT {
      * was properly ingested.
      */
     @Test
-    void check_logs_successfully_ingested() {
+    void check_logs_successfully_ingested() throws InterruptedException {
         cloudWatchLogsService = getTestableService();
         cloudWatchLogsService.output(getSampleEvent());
+
+        sleep(1000);
 
         String resultMessage = retrieveLatestLogEvent();
         String compareTo = JacksonEvent.fromMessage(TEST_LOG_MESSAGE).toJsonString();
@@ -171,7 +188,7 @@ public class CloudWatchLogsServiceIT {
 
         cloudWatchLogsService.output(getSampleEvent());
 
-        sleep(500); //Need to wait for AWS services to sync up after event is received.
+        sleep(1000); //Need to wait for AWS services to sync up after event is received.
 
         int numberOfLogsAfter = retrieveLogListSize();
 

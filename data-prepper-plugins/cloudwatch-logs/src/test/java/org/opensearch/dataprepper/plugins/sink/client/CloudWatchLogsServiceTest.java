@@ -59,7 +59,7 @@ public class CloudWatchLogsServiceTest {
     private Counter failedEventCounter;
     private final String TEST_LOG_GROUP = "TESTGROUP";
     private final String TEST_LOG_STREAM = "TESTSTREAM";
-    private final int messageKeyByteSize = 14;
+    private static final int messageKeyByteSize = 14;
 
     @BeforeEach
     void setUp() {

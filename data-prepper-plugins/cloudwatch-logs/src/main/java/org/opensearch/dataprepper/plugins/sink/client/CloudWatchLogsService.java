@@ -149,9 +149,9 @@ public class CloudWatchLogsService {
 
                 requestSuccessCount.increment();
                 failedPost = false;
-                /*
-                    TODO: When a log is rejected by the service, we cannot send it, can probably push to a DLQ here.
-                 */
+
+                //TODO: When a log is rejected by the service, we cannot send it, can probably push to a DLQ here.
+
             } catch (AwsServiceException | SdkClientException e) {
                 LOG.error("Failed to push logs with error: {}", e.getMessage());
 
