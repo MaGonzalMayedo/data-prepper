@@ -101,17 +101,14 @@ public class CloudWatchLogsService {
             String logJsonString = singleLog.getData().toJsonString();
             int logLength = logJsonString.length();
 
-            if (thresholdCheck.checkGreaterThanMaxEventSize(logLength + 26)) {
+            if (thresholdCheck.checkGreaterThanMaxEventSize(logLength + LOG_EVENT_OVERHEAD_SIZE)) {
                 LOG.warn("Event blocked due to Max Size restriction!");
                 continue;
             }
 
             int bufferSizeWithOverHead = (buffer.getBufferSize() + (buffer.getEventCount() * LOG_EVENT_OVERHEAD_SIZE));
             if (thresholdCheck.isGreaterThanThresholdReached(getStopWatchTime(),  bufferSizeWithOverHead + logLength + LOG_EVENT_OVERHEAD_SIZE, buffer.getEventCount() + 1)) {
-                LOG.info("Attempting to push logs!");
                 pushLogs();
-                stopAndResetStopWatch();
-                startStopWatch();
             }
 
             if (singleLog.getData().getEventHandle() != null) {
@@ -125,6 +122,10 @@ public class CloudWatchLogsService {
     }
 
     private void pushLogs() {
+        LOG.info("Attempting to push logs!");
+        stopAndResetStopWatch();
+        startStopWatch();
+
         ArrayList<InputLogEvent> logEventList = new ArrayList<>();
         failedPost = true;
 
@@ -185,10 +186,7 @@ public class CloudWatchLogsService {
     private void runExitCheck() {
         int bufferSizeWithOverHead = (buffer.getBufferSize() + (buffer.getEventCount() * LOG_EVENT_OVERHEAD_SIZE));
         if (thresholdCheck.isEqualToThresholdReached(bufferSizeWithOverHead, buffer.getEventCount())) {
-            LOG.info("Attempting to push logs!");
             pushLogs();
-            stopAndResetStopWatch();
-            startStopWatch();
         }
     }
 
