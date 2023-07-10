@@ -93,35 +93,40 @@ public class CloudWatchLogsService {
     public void output(final Collection<Record<Event>> logs) {
         reentrantLock.lock();
 
-        if (!stopWatchOn) {
-            startStopWatch();
+        try {
+            if (!stopWatchOn) {
+                startStopWatch();
+            }
+
+            for (Record<Event> singleLog: logs) {
+                String logJsonString = singleLog.getData().toJsonString();
+                int logLength = logJsonString.length();
+
+                if (thresholdCheck.checkGreaterThanMaxEventSize(logLength + LOG_EVENT_OVERHEAD_SIZE)) {
+                    LOG.warn("Event blocked due to Max Size restriction! {Event Size: " + (logLength + LOG_EVENT_OVERHEAD_SIZE) + "}");
+                    continue;
+                }
+
+                int bufferSizeWithOverHead = (buffer.getBufferSize() + (buffer.getEventCount() * LOG_EVENT_OVERHEAD_SIZE));
+                if (thresholdCheck.isGreaterThanThresholdReached(getStopWatchTime(),  bufferSizeWithOverHead + logLength + LOG_EVENT_OVERHEAD_SIZE, buffer.getEventCount() + 1)) {
+                    pushLogs();
+                }
+
+                if (singleLog.getData().getEventHandle() != null) {
+                    bufferedEventHandles.add(singleLog.getData().getEventHandle());
+                }
+                buffer.writeEvent(logJsonString.getBytes());
+            }
+
+            runExitCheck();
+
+        } catch (InterruptedException e) {
+            LOG.error("Caught InterruptedException while attempting to publish logs!");
+            reentrantLock.unlock();
         }
-
-        for (Record<Event> singleLog: logs) {
-            String logJsonString = singleLog.getData().toJsonString();
-            int logLength = logJsonString.length();
-
-            if (thresholdCheck.checkGreaterThanMaxEventSize(logLength + LOG_EVENT_OVERHEAD_SIZE)) {
-                LOG.warn("Event blocked due to Max Size restriction! {Event Size: " + (logLength + LOG_EVENT_OVERHEAD_SIZE) + "}");
-                continue;
-            }
-
-            int bufferSizeWithOverHead = (buffer.getBufferSize() + (buffer.getEventCount() * LOG_EVENT_OVERHEAD_SIZE));
-            if (thresholdCheck.isGreaterThanThresholdReached(getStopWatchTime(),  bufferSizeWithOverHead + logLength + LOG_EVENT_OVERHEAD_SIZE, buffer.getEventCount() + 1)) {
-                pushLogs();
-            }
-
-            if (singleLog.getData().getEventHandle() != null) {
-                bufferedEventHandles.add(singleLog.getData().getEventHandle());
-            }
-            buffer.writeEvent(logJsonString.getBytes());
-        }
-
-        runExitCheck();
-        reentrantLock.unlock();
     }
 
-    private void pushLogs() {
+    private void pushLogs() throws InterruptedException {
         LOG.info("Attempting to push logs! {Batch size: " + buffer.getEventCount() + "}");
         stopAndResetStopWatch();
         startStopWatch();
@@ -155,11 +160,7 @@ public class CloudWatchLogsService {
             } catch (AwsServiceException | SdkClientException e) {
                 LOG.error("Failed to push logs with error: {}", e.getMessage());
 
-                try {
-                    Thread.sleep(calculateBackOffTime(backOffTimeBase));
-                } catch (InterruptedException i) {
-                    throw new RuntimeException(i.getMessage());
-                }
+                Thread.sleep(calculateBackOffTime(backOffTimeBase));
 
                 LOG.warn("Trying to retransmit request... {Attempt: " + retryCount + "}");
                 requestFailCount.increment();
@@ -183,7 +184,7 @@ public class CloudWatchLogsService {
         return failCounter * backOffTimeBase;
     }
 
-    private void runExitCheck() {
+    private void runExitCheck() throws InterruptedException {
         int bufferSizeWithOverHead = (buffer.getBufferSize() + (buffer.getEventCount() * LOG_EVENT_OVERHEAD_SIZE));
         if (thresholdCheck.isEqualToThresholdReached(bufferSizeWithOverHead, buffer.getEventCount())) {
             pushLogs();
