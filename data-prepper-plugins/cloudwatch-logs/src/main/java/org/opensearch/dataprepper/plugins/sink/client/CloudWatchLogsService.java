@@ -102,7 +102,7 @@ public class CloudWatchLogsService {
             int logLength = logJsonString.length();
 
             if (thresholdCheck.checkGreaterThanMaxEventSize(logLength + LOG_EVENT_OVERHEAD_SIZE)) {
-                LOG.warn("Event blocked due to Max Size restriction!");
+                LOG.warn("Event blocked due to Max Size restriction! {Event Size: " + (logLength + LOG_EVENT_OVERHEAD_SIZE) + "}");
                 continue;
             }
 
@@ -122,7 +122,7 @@ public class CloudWatchLogsService {
     }
 
     private void pushLogs() {
-        LOG.info("Attempting to push logs!");
+        LOG.info("Attempting to push logs! {Batch size: " + buffer.getEventCount() + "}");
         stopAndResetStopWatch();
         startStopWatch();
 
@@ -161,7 +161,7 @@ public class CloudWatchLogsService {
                     throw new RuntimeException(i.getMessage());
                 }
 
-                LOG.warn("Trying to retransmit request...");
+                LOG.warn("Trying to retransmit request... {Attempt: " + retryCount + "}");
                 requestFailCount.increment();
                 failCounter += 1;
             }
@@ -171,7 +171,7 @@ public class CloudWatchLogsService {
             logEventFailCounter.increment(logEventList.size());
             releaseEventHandles(false);
             LOG.error("Error, timed out trying to push logs!");
-            throw new RetransmissionLimitException("Error, timed out trying to push logs! (Max retry_count reached)");
+            throw new RetransmissionLimitException("Error, timed out trying to push logs! (Max retry_count reached: {" + retryCount + "})");
         } else {
             logEventSuccessCounter.increment(logEventList.size());
             releaseEventHandles(true);
