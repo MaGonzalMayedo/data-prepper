@@ -109,7 +109,7 @@ public class CloudWatchLogsService {
                 }
 
                 int bufferSizeWithOverHead = (buffer.getBufferSize() + (buffer.getEventCount() * LOG_EVENT_OVERHEAD_SIZE));
-                if ((thresholdCheck.isGreaterThanThresholdReached(getStopWatchTime(),  bufferSizeWithOverHead + logLength + LOG_EVENT_OVERHEAD_SIZE, buffer.getEventCount() + 1))) {
+                if ((thresholdCheck.isGreaterThanThresholdReached(getStopWatchTime(),  bufferSizeWithOverHead + logLength + LOG_EVENT_OVERHEAD_SIZE, buffer.getEventCount() + 1) && (buffer.getEventCount() > 0))) {
                     pushLogs();
                 }
 
@@ -189,6 +189,7 @@ public class CloudWatchLogsService {
 
     private void runExitCheck() throws InterruptedException {
         int bufferSizeWithOverHead = (buffer.getBufferSize() + (buffer.getEventCount() * LOG_EVENT_OVERHEAD_SIZE));
+        boolean testsBufferSize = thresholdCheck.checkEqualMaxRequestSize(bufferSizeWithOverHead);
         if (thresholdCheck.isEqualToThresholdReached(bufferSizeWithOverHead, buffer.getEventCount())) {
             pushLogs();
         }
