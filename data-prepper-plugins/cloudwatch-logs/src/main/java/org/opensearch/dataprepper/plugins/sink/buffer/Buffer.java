@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.sink.buffer;
 
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.record.Record;
+import java.io.IOException;
+import java.util.ArrayList;
 
 /**
  * Buffer that handles the temporary storage of
@@ -25,7 +25,11 @@ public interface Buffer {
      */
     int getBufferSize();
 
-    void writeEvent(byte[] event);
+    void writeEvent(byte[] event) throws IOException;
 
     byte[] getEvent();
+
+    ArrayList<byte[]> getBufferedData();
+
+    void clearBuffer();
 }

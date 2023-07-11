@@ -42,7 +42,7 @@ public class ThresholdCheck {
      * @return boolean - true if we equal the threshold events or false otherwise.
      */
     public boolean isEqualToThresholdReached(final int currentRequestSize, final int batchSize) {
-        return ((checkEqualBatchSize(batchSize) || checkEqualMaxRequestSize(currentRequestSize)) && (batchSize > 0));
+        return ((checkEqualBatchSize(batchSize) || checkEqualMaxRequestSize(currentRequestSize)));
     }
 
     /**

@@ -5,11 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.buffer;
 
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.record.Record;
-
 import java.util.ArrayList;
-import java.util.Optional;
 
 //TODO: Might not be thread safe to use static variables in a buffer that can be shared.
 public class InMemoryBuffer implements Buffer {
@@ -40,5 +36,16 @@ public class InMemoryBuffer implements Buffer {
     public byte[] getEvent() {
         bufferSize -= eventsBuffered.get(0).length;
         return eventsBuffered.remove(0);
+    }
+
+    @Override
+    public ArrayList<byte[]> getBufferedData() {
+        bufferSize = 0;
+        return eventsBuffered;
+    }
+
+    @Override
+    public void clearBuffer() {
+        eventsBuffered.clear();
     }
 }

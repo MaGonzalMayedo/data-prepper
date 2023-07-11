@@ -23,6 +23,7 @@ import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.cloudwatchlogs.model.InputLogEvent;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsRequest;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -103,12 +104,12 @@ public class CloudWatchLogsService {
                 int logLength = logJsonString.length();
 
                 if (thresholdCheck.checkGreaterThanMaxEventSize(logLength + LOG_EVENT_OVERHEAD_SIZE)) {
-                    LOG.warn("Event blocked due to Max Size restriction! {Event Size: " + (logLength + LOG_EVENT_OVERHEAD_SIZE) + "}");
+                    LOG.warn("Event blocked due to Max Size restriction! {Event Size: " + (logLength + LOG_EVENT_OVERHEAD_SIZE) + " bytes}");
                     continue;
                 }
 
                 int bufferSizeWithOverHead = (buffer.getBufferSize() + (buffer.getEventCount() * LOG_EVENT_OVERHEAD_SIZE));
-                if (thresholdCheck.isGreaterThanThresholdReached(getStopWatchTime(),  bufferSizeWithOverHead + logLength + LOG_EVENT_OVERHEAD_SIZE, buffer.getEventCount() + 1)) {
+                if ((thresholdCheck.isGreaterThanThresholdReached(getStopWatchTime(),  bufferSizeWithOverHead + logLength + LOG_EVENT_OVERHEAD_SIZE, buffer.getEventCount() + 1))) {
                     pushLogs();
                 }
 
@@ -120,7 +121,7 @@ public class CloudWatchLogsService {
 
             runExitCheck();
 
-        } catch (InterruptedException e) {
+        } catch (IOException | InterruptedException e) {
             LOG.error("Caught InterruptedException while attempting to publish logs!");
             reentrantLock.unlock();
         }
@@ -134,9 +135,9 @@ public class CloudWatchLogsService {
         ArrayList<InputLogEvent> logEventList = new ArrayList<>();
         failedPost = true;
 
-        while (buffer.getEventCount() > 0) {
+        for (byte[] data: buffer.getBufferedData()) {
             InputLogEvent tempLogEvent = InputLogEvent.builder()
-                    .message(new String(buffer.getEvent()))
+                    .message(new String(data))
                     .timestamp(System.currentTimeMillis())
                     .build();
             logEventList.add(tempLogEvent);
@@ -167,6 +168,8 @@ public class CloudWatchLogsService {
                 failCounter += 1;
             }
         }
+
+        buffer.clearBuffer();
 
         if (failedPost) {
             logEventFailCounter.increment(logEventList.size());
