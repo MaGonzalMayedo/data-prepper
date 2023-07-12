@@ -60,13 +60,14 @@ public class CloudWatchLogsServiceTest {
     private final String TEST_LOG_GROUP = "TESTGROUP";
     private final String TEST_LOG_STREAM = "TESTSTREAM";
     private static final int messageKeyByteSize = 14;
+    private static final int convertToBytesFromKiloBytes  = 1024;
 
     @BeforeEach
     void setUp() {
         cloudWatchLogsSinkConfig = mock(CloudWatchLogsSinkConfig.class);
 
         thresholdConfig = new ThresholdConfig(); //Class can stay as is.
-        thresholdCheck = new ThresholdCheck(thresholdConfig.getBatchSize(), thresholdConfig.getMaxEventSize() * 1024,
+        thresholdCheck = new ThresholdCheck(thresholdConfig.getBatchSize(), thresholdConfig.getMaxEventSize() * convertToBytesFromKiloBytes,
                 thresholdConfig.getMaxRequestSize(), thresholdConfig.getLogSendInterval());
 
         awsConfig = mock(AwsConfig.class);
@@ -250,9 +251,9 @@ public class CloudWatchLogsServiceTest {
      */
     @Test
     void check_event_size_correct_test() {
-        ArrayList<Record<Event>> sampleEvents = (ArrayList<Record<Event>>) getSampleRecordsLarge(ThresholdConfig.DEFAULT_BATCH_SIZE, ThresholdConfig.DEFAULT_EVENT_SIZE * 1024 - messageKeyByteSize); //Accounts for the key string value.
+        ArrayList<Record<Event>> sampleEvents = (ArrayList<Record<Event>>) getSampleRecordsLarge(ThresholdConfig.DEFAULT_BATCH_SIZE, ThresholdConfig.DEFAULT_EVENT_SIZE * convertToBytesFromKiloBytes - messageKeyByteSize); //Accounts for the key string value.
 
-        assertThat(sampleEvents.get(0).getData().toJsonString().length(), equalTo(ThresholdConfig.DEFAULT_EVENT_SIZE * 1024));
+        assertThat(sampleEvents.get(0).getData().toJsonString().length(), equalTo(ThresholdConfig.DEFAULT_EVENT_SIZE * convertToBytesFromKiloBytes));
     }
 
     @Test
@@ -260,7 +261,7 @@ public class CloudWatchLogsServiceTest {
         setMockClientNoErrors();
         CloudWatchLogsService cloudWatchLogsService = getCwlClientWithMemoryBuffer();
 
-        final Collection<Record<Event>> sampleEvents = getSampleRecordsLarge(ThresholdConfig.DEFAULT_BATCH_SIZE, ThresholdConfig.DEFAULT_EVENT_SIZE * 1024 - messageKeyByteSize - CloudWatchLogsService.LOG_EVENT_OVERHEAD_SIZE + 1);
+        final Collection<Record<Event>> sampleEvents = getSampleRecordsLarge(ThresholdConfig.DEFAULT_BATCH_SIZE, ThresholdConfig.DEFAULT_EVENT_SIZE * convertToBytesFromKiloBytes - CloudWatchLogsService.LOG_EVENT_OVERHEAD_SIZE - messageKeyByteSize + 1);
 
         cloudWatchLogsService.output(sampleEvents);
 
@@ -273,7 +274,7 @@ public class CloudWatchLogsServiceTest {
         setMockClientNoErrors();
         CloudWatchLogsService cloudWatchLogsService = getCwlClientWithMemoryBuffer();
 
-        final Collection<Record<Event>> sampleEvents = getSampleRecordsLarge(ThresholdConfig.DEFAULT_BATCH_SIZE, (ThresholdConfig.DEFAULT_EVENT_SIZE * 1024 - messageKeyByteSize) - CloudWatchLogsService.LOG_EVENT_OVERHEAD_SIZE);
+        final Collection<Record<Event>> sampleEvents = getSampleRecordsLarge(ThresholdConfig.DEFAULT_BATCH_SIZE, (ThresholdConfig.DEFAULT_EVENT_SIZE * convertToBytesFromKiloBytes - messageKeyByteSize) - CloudWatchLogsService.LOG_EVENT_OVERHEAD_SIZE);
 
         cloudWatchLogsService.output(sampleEvents);
 
