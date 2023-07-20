@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.sink.client;
 
 import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.plugins.sink.metrics.CloudWatchLogsMetrics;
 import org.opensearch.dataprepper.plugins.sink.packaging.ThreadTaskEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

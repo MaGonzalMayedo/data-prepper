@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.plugins.sink.config.ThresholdConfig;
+import org.opensearch.dataprepper.plugins.sink.metrics.CloudWatchLogsMetrics;
 import org.opensearch.dataprepper.plugins.sink.packaging.ThreadTaskEvents;
 import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
@@ -26,7 +27,7 @@ public class CloudWatchLogsDispatcherTest {
     private CloudWatchLogsDispatcher cloudWatchLogsDispatcher;
     private BlockingQueue<ThreadTaskEvents> mockTaskQueue;
     private  CloudWatchLogsClient cloudWatchLogsClient;
-    private  CloudWatchLogsMetrics cloudWatchLogsMetrics;
+    private CloudWatchLogsMetrics cloudWatchLogsMetrics;
     private PluginMetrics pluginMetrics;
     private Counter requestSuccessCounter;
     private Counter requestFailCounter;
