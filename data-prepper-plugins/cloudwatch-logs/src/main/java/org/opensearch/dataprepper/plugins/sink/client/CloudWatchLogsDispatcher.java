@@ -99,12 +99,10 @@ public class CloudWatchLogsDispatcher implements Runnable {
 
         if (failedPost) {
             cloudWatchLogsMetrics.increaseLogEventFailCounter(inputLogEvents.size());
-            LOG.error("Error, timed out trying to push logs!");
             releaseEventHandles(false, eventHandles);
             return false;
         } else {
             cloudWatchLogsMetrics.increaseLogEventSuccessCounter(inputLogEvents.size());
-            LOG.info("Succeeded in publishing logs!");
             releaseEventHandles(true, eventHandles);
             return true;
         }
@@ -120,6 +118,7 @@ public class CloudWatchLogsDispatcher implements Runnable {
         try {
             ThreadTaskEvents taskData = taskQueue.take();
             List<InputLogEvent> inputLogEvents = prepareInputLogEvents(taskData);
+            LOG.info("Current Thread# {} has this many logs to push {}", Thread.currentThread().getName(), inputLogEvents.size());
             dispatchLogs(inputLogEvents, taskData.getEventHandles());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
