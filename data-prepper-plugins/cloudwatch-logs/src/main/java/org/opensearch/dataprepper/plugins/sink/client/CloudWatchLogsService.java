@@ -100,7 +100,9 @@ public class CloudWatchLogsService {
         buffer.clearBuffer();
         bufferedEventHandles = new ArrayList<>();
 
-        LOG.info("we have {} messages!", dataToPush.getEventMessages().size());
+        LOG.info("Current thread {} have {} messages!", Thread.currentThread().getName(), dataToPush.getEventMessages().size());
+
+        LOG.info("Current BlockingQueueSize: {}!", taskQueue.size());
 
         sinkThreadManager.execute(dispatcher);
     }
