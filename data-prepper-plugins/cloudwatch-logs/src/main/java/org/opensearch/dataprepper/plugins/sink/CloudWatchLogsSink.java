@@ -42,7 +42,7 @@ import java.util.concurrent.BlockingQueue;
  */
 @DataPrepperPlugin(name = "cloudwatchlogs-sink", pluginType = Sink.class, pluginConfigurationType = CloudWatchLogsSinkConfig.class)
 public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
-    private static final int BLOCKING_QUEUE_SIZE = 15;
+    public static final int BLOCKING_QUEUE_SIZE = 100;
     private final AwsConfig awsConfig;
     private final CloudWatchLogsSinkConfig cloudWatchLogsSinkConfig;
     private final ThresholdConfig thresholdConfig;
