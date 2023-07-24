@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.sink.time;
+package org.opensearch.dataprepper.plugins.sink.utils;
 
 import org.apache.commons.lang3.time.StopWatch;
 

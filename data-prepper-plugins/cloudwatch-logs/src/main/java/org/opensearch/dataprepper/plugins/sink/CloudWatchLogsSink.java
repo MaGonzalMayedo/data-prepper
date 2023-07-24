@@ -25,7 +25,7 @@ import org.opensearch.dataprepper.plugins.sink.config.CloudWatchLogsSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.config.ThresholdConfig;
 import org.opensearch.dataprepper.plugins.sink.metrics.CloudWatchLogsMetrics;
 import org.opensearch.dataprepper.plugins.sink.packaging.ThreadTaskEvents;
-import org.opensearch.dataprepper.plugins.sink.push_condition.CloudWatchLogsLimits;
+import org.opensearch.dataprepper.plugins.sink.utils.CloudWatchLogsLimits;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 
 import java.util.Collection;
@@ -86,7 +86,10 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
                 cloudWatchLogsSinkConfig.getLogGroup(), cloudWatchLogsSinkConfig.getLogStream(),
                 thresholdConfig.getRetryCount(), thresholdConfig.getBackOffTime());
 
-        cloudWatchLogsService = new CloudWatchLogsService(buffer, cloudWatchLogsLimits, cloudWatchLogsDispatcher, taskQueue);
+        cloudWatchLogsService = new CloudWatchLogsService(buffer, cloudWatchLogsClient, cloudWatchLogsMetrics,
+                cloudWatchLogsLimits, taskQueue,
+                cloudWatchLogsSinkConfig.getLogGroup(), cloudWatchLogsSinkConfig.getLogStream(),
+                thresholdConfig.getRetryCount(), thresholdConfig.getBackOffTime());
     }
 
     @Override

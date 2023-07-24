@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.sink.push_condition;
+package org.opensearch.dataprepper.plugins.sink.utils;
 /**
  * ThresholdCheck receives parameters for which to reference the
  * limits of a buffer and CloudWatchLogsClient before making a

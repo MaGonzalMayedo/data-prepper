@@ -13,7 +13,7 @@ import org.opensearch.dataprepper.plugins.sink.client.CloudWatchLogsService;
 import org.opensearch.dataprepper.plugins.sink.config.CloudWatchLogsSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.config.ThresholdConfig;
 import org.opensearch.dataprepper.plugins.sink.packaging.ThreadTaskEvents;
-import org.opensearch.dataprepper.plugins.sink.push_condition.CloudWatchLogsLimits;
+import org.opensearch.dataprepper.plugins.sink.utils.CloudWatchLogsLimits;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 
 import java.util.ArrayList;
